@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import IntakeForm from './stages/IntakeForm';
@@ -37,10 +37,6 @@ export default function AnalyzePage() {
   const [intake, setIntake] = useState<IntakeData | null>(null);
   const [clarification, setClarification] = useState<ClarificationData | null>(null);
 
-  // We track the pending report ID from the API call
-  const pendingIdRef = useRef<string | null>(null);
-  const animDoneRef = useRef(false);
-
   function handleIntakeSubmit(data: IntakeData) {
     setIntake(data);
     setStage('clarification');
@@ -51,10 +47,7 @@ export default function AnalyzePage() {
     setStage('loading');
 
     const reportId = crypto.randomUUID();
-    pendingIdRef.current = null;
-    animDoneRef.current = false;
 
-    // Convert file to base64 if provided
     async function buildBody() {
       const body: Record<string, unknown> = { intake, clarification: data };
       if (intake?.ideaFile) {
@@ -70,37 +63,28 @@ export default function AnalyzePage() {
       return body;
     }
 
-    // Kick off real API call
-    buildBody().then(body =>
-    fetch('/api/analyze', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    }))
+    // Navigate as soon as API responds — loading screen waits indefinitely
+    buildBody()
+      .then(body => fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }))
       .then(r => r.json())
       .then(({ analysis, error }) => {
         if (error || !analysis) throw new Error(error || 'No analysis');
         const payload = { id: reportId, campaignName: intake!.campaignName, ...analysis };
         localStorage.setItem(`report:${reportId}`, JSON.stringify(payload));
-        pendingIdRef.current = reportId;
-        // If loading animation already finished, navigate now
-        if (animDoneRef.current) router.push(`/analyze/${reportId}`);
+        router.push(`/analyze/${reportId}`);
       })
       .catch(err => {
         console.error('Analysis failed:', err);
-        // Fall back to demo report on error
-        pendingIdRef.current = 'demo-report';
-        if (animDoneRef.current) router.push('/analyze/demo-report');
+        router.push('/analyze/demo-report');
       });
   }
 
-  function handleAnalysisComplete() {
-    animDoneRef.current = true;
-    if (pendingIdRef.current) {
-      router.push(`/analyze/${pendingIdRef.current}`);
-    }
-    // Otherwise we wait — navigation happens in the fetch .then above
-  }
+  // Loading stage no longer drives navigation — it just shows progress
+  function handleAnalysisComplete() { /* no-op */ }
 
   return (
     <div style={{ minHeight: '100vh', padding: '40px 40px' }}>

@@ -6,10 +6,18 @@ import { Check } from 'lucide-react';
 
 const STEPS = [
   'Reviewing your brief...',
-  'Pulling historical performance data...',
+  'Applying behavioral science frameworks...',
   'Researching comparable campaigns...',
-  'Scoring against effectiveness drivers...',
-  'Generating recommendations...',
+  'Scoring against 6 effectiveness drivers...',
+  'Generating deep recommendations...',
+];
+
+// After all steps complete, cycle through these while waiting for the API
+const WAIT_MESSAGES = [
+  'Cross-referencing MENA market data...',
+  'Verifying psychological triggers...',
+  'Calibrating scores against benchmarks...',
+  'Finalizing your report...',
 ];
 
 interface Props {
@@ -19,34 +27,54 @@ interface Props {
 export default function LoadingStage({ onComplete }: Props) {
   const [currentStep, setCurrentStep] = useState(0);
   const [progress, setProgress] = useState(0);
+  const [waitIndex, setWaitIndex] = useState(0);
+  const [waiting, setWaiting] = useState(false);
+
+  // Notify parent that animation is done — but parent decides when to navigate
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _ = onComplete; // kept in props for API compat but not called from here
 
   useEffect(() => {
-    const stepDuration = 1800;
+    const stepDuration = 2200;
     let step = 0;
+    let done = false;
 
     const stepInterval = setInterval(() => {
       step += 1;
       if (step >= STEPS.length) {
         clearInterval(stepInterval);
-        setTimeout(onComplete, 600);
+        done = true;
+        setCurrentStep(STEPS.length); // all complete
+        setWaiting(true);
       } else {
         setCurrentStep(step);
       }
     }, stepDuration);
 
+    // Progress bar: ramps to 85% over the steps, then crawls slowly
     const progressInterval = setInterval(() => {
       setProgress((p) => {
-        const target = ((step + 1) / STEPS.length) * 100;
-        const next = p + (target - p) * 0.08;
-        return next > 98 ? 98 : next;
+        const stepTarget = done ? 92 : ((step + 1) / STEPS.length) * 85;
+        const speed = done ? 0.005 : 0.1;
+        const next = p + (stepTarget - p) * speed;
+        return Math.min(next, 97);
       });
-    }, 50);
+    }, 80);
 
     return () => {
       clearInterval(stepInterval);
       clearInterval(progressInterval);
     };
-  }, [onComplete]);
+  }, []);
+
+  // Cycle wait messages once in waiting state
+  useEffect(() => {
+    if (!waiting) return;
+    const t = setInterval(() => {
+      setWaitIndex((i) => (i + 1) % WAIT_MESSAGES.length);
+    }, 2800);
+    return () => clearInterval(t);
+  }, [waiting]);
 
   return (
     <div style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -71,7 +99,7 @@ export default function LoadingStage({ onComplete }: Props) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 32 }}>
           {STEPS.map((step, i) => {
             const completed = i < currentStep;
-            const active = i === currentStep;
+            const active = i === currentStep && !waiting;
             const pending = i > currentStep;
 
             return (
@@ -82,12 +110,10 @@ export default function LoadingStage({ onComplete }: Props) {
                 transition={{ delay: i * 0.08 }}
                 style={{ display: 'flex', alignItems: 'center', gap: 14 }}
               >
-                {/* Indicator */}
                 <div style={{ position: 'relative', flexShrink: 0, width: 28, height: 28 }}>
                   {completed && (
                     <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
+                      initial={{ scale: 0 }} animate={{ scale: 1 }}
                       style={{ width: 28, height: 28, borderRadius: '50%', background: '#3EB489', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     >
                       <Check size={14} color="#fff" strokeWidth={3} />
@@ -105,11 +131,18 @@ export default function LoadingStage({ onComplete }: Props) {
                   {pending && (
                     <div style={{ width: 28, height: 28, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.12)' }} />
                   )}
+                  {waiting && completed && i === STEPS.length - 1 && (
+                    <motion.div
+                      initial={{ scale: 0 }} animate={{ scale: 1 }}
+                      style={{ position: 'absolute', inset: 0, width: 28, height: 28, borderRadius: '50%', background: '#3EB489', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      <Check size={14} color="#fff" strokeWidth={3} />
+                    </motion.div>
+                  )}
                 </div>
 
                 <span style={{
-                  fontFamily: 'var(--font-poppins)',
-                  fontSize: 14,
+                  fontFamily: 'var(--font-poppins)', fontSize: 14,
                   fontWeight: active ? 500 : 400,
                   color: completed ? '#3EB489' : active ? 'var(--text-primary)' : 'var(--text-muted)',
                   transition: 'color 0.3s',
@@ -119,6 +152,31 @@ export default function LoadingStage({ onComplete }: Props) {
               </motion.div>
             );
           })}
+
+          {/* Wait message cycling below the steps */}
+          {waiting && (
+            <motion.div
+              key={waitIndex}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.4 }}
+              style={{ display: 'flex', alignItems: 'center', gap: 14, paddingTop: 4 }}
+            >
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1.4, repeat: Infinity, ease: 'linear' }}
+                style={{
+                  flexShrink: 0, width: 28, height: 28, borderRadius: '50%',
+                  border: '2px solid rgba(62,180,137,0.2)',
+                  borderTop: '2px solid #3EB489',
+                }}
+              />
+              <span style={{ fontFamily: 'var(--font-poppins)', fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>
+                {WAIT_MESSAGES[waitIndex]}
+              </span>
+            </motion.div>
+          )}
         </div>
 
         {/* Progress bar */}
@@ -126,7 +184,7 @@ export default function LoadingStage({ onComplete }: Props) {
           <motion.div
             style={{ height: '100%', borderRadius: 2, background: 'linear-gradient(90deg, #3EB489, #6DC4A8)' }}
             animate={{ width: `${progress}%` }}
-            transition={{ duration: 0.3, ease: 'easeOut' }}
+            transition={{ duration: 0.4, ease: 'easeOut' }}
           />
         </div>
         <p style={{ fontFamily: 'var(--font-poppins)', fontSize: 11, color: 'var(--text-muted)', textAlign: 'center', marginTop: 10, marginBottom: 0 }}>
