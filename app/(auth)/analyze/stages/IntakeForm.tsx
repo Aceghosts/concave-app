@@ -148,10 +148,6 @@ export default function IntakeForm({ onSubmit }: Props) {
       setFileError('Only PDF and image files (JPG, PNG, WEBP, GIF) are supported.');
       return;
     }
-    if (file.size > 20 * 1024 * 1024) {
-      setFileError('File must be under 20 MB.');
-      return;
-    }
     setData((d) => ({ ...d, ideaFile: file, ideaType: 'pptx' }));
   }
 
@@ -301,7 +297,7 @@ export default function IntakeForm({ onSubmit }: Props) {
             <label style={{ ...labelStyle, marginBottom: 4 }}>Upload Creative or Brief</label>
             <p style={{ fontFamily: 'var(--font-poppins)', fontSize: 12, color: 'var(--text-muted)', margin: '0 0 14px' }}>
               Upload a PDF brief or an image of your creative — Claude will read and analyze the actual content.
-              Supported: <strong style={{ color: 'var(--text-secondary)' }}>PDF, JPG, PNG, WEBP, GIF</strong> · Max 20 MB
+              Supported: <strong style={{ color: 'var(--text-secondary)' }}>PDF, JPG, PNG, WEBP, GIF</strong>
             </p>
 
             {data.ideaFile ? (
