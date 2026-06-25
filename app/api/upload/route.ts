@@ -13,14 +13,20 @@ export async function POST(req: NextRequest) {
 
     if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 });
 
+    console.log(`Upload: ${file.name}, size: ${file.size}, type: ${file.type}`);
+
     // Upload raw file to Supabase Storage
     const storagePath = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
+    console.log(`Uploading to storage path: ${storagePath}, buffer size: ${buffer.length}`);
+
     const { error: storageError } = await supabaseServer.storage
       .from('campaign-files')
-      .upload(storagePath, buffer, { contentType: file.type, upsert: false });
+      .upload(storagePath, buffer, { contentType: file.type || 'application/octet-stream', upsert: false });
+
+    console.log(`Storage result: ${storageError ? storageError.message : 'success'}`);
 
     if (storageError) {
       return NextResponse.json({ error: `Storage upload failed: ${storageError.message}` }, { status: 500 });
