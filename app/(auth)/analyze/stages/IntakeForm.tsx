@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Upload, FileText, ChevronDown, Image } from 'lucide-react';
+import { X, Upload, FileText, ChevronDown, Image, Video } from 'lucide-react';
 import type { IntakeData } from '../page';
 
 const GOALS = ['Brand Awareness', 'Lead Generation', 'Sales Conversion', 'App Downloads', 'Community Growth', 'Event Promotion'];
@@ -12,8 +12,10 @@ const TONES = ['Bold & Energetic', 'Warm & Emotional', 'Minimalist', 'Humorous',
 const ACCEPTED_TYPES = [
   'application/pdf',
   'image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif',
+  'video/mp4', 'video/quicktime', 'video/webm', 'video/x-msvideo', 'video/mpeg',
 ];
-const ACCEPTED_EXTENSIONS = '.pdf,.jpg,.jpeg,.png,.webp,.gif';
+const ACCEPTED_EXTENSIONS = '.pdf,.jpg,.jpeg,.png,.webp,.gif,.mp4,.mov,.webm,.avi,.mpeg';
+const VIDEO_TYPES = ['video/mp4', 'video/quicktime', 'video/webm', 'video/x-msvideo', 'video/mpeg'];
 
 interface Props {
   onSubmit: (data: IntakeData) => void;
@@ -164,6 +166,7 @@ export default function IntakeForm({ onSubmit }: Props) {
   }
 
   const isPDF = data.ideaFile?.type === 'application/pdf' || data.ideaFile?.name.endsWith('.pdf');
+  const isVideo = data.ideaFile ? VIDEO_TYPES.includes(data.ideaFile.type) || /\.(mp4|mov|webm|avi|mpeg)$/i.test(data.ideaFile.name) : false;
 
   return (
     <div style={{ maxWidth: 720, margin: '0 auto' }}>
@@ -297,16 +300,16 @@ export default function IntakeForm({ onSubmit }: Props) {
             <label style={{ ...labelStyle, marginBottom: 4 }}>Upload Creative or Brief</label>
             <p style={{ fontFamily: 'var(--font-poppins)', fontSize: 12, color: 'var(--text-muted)', margin: '0 0 14px' }}>
               Upload a PDF brief or an image of your creative — Claude will read and analyze the actual content.
-              Supported: <strong style={{ color: 'var(--text-secondary)' }}>PDF, JPG, PNG, WEBP, GIF</strong>
+              Supported: <strong style={{ color: 'var(--text-secondary)' }}>PDF, JPG, PNG, WEBP, GIF, MP4, MOV, WEBM</strong>
             </p>
 
             {data.ideaFile ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px', background: 'rgba(62,180,137,0.06)', border: '1px solid rgba(62,180,137,0.2)', borderRadius: 14 }}>
-                {isPDF ? <FileText size={22} color="#3EB489" /> : <Image size={22} color="#3EB489" />}
+                {isVideo ? <Video size={22} color="#3EB489" /> : isPDF ? <FileText size={22} color="#3EB489" /> : <Image size={22} color="#3EB489" />}
                 <div style={{ flex: 1 }}>
                   <p style={{ fontFamily: 'var(--font-poppins)', fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', margin: 0 }}>{data.ideaFile.name}</p>
                   <p style={{ fontFamily: 'var(--font-poppins)', fontSize: 12, color: 'var(--text-muted)', margin: '2px 0 0' }}>
-                    {(data.ideaFile.size / 1024 / 1024).toFixed(2)} MB · {isPDF ? 'PDF — full text extraction' : 'Image — visual analysis'}
+                    {(data.ideaFile.size / 1024 / 1024).toFixed(1)} MB · {isVideo ? 'Video — Gemini AI will watch & analyze' : isPDF ? 'PDF — full text extraction' : 'Image — visual analysis'}
                   </p>
                 </div>
                 <button type="button" onClick={removeFile} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4 }}>

@@ -1,5 +1,8 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { NextRequest, NextResponse } from 'next/server';
+
+export const maxDuration = 300;
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -257,10 +260,66 @@ const SCHEMA = {
   required: ['overall_score', 'grade', 'executive_summary', 'verdict', 'top_recommendations', 'creative_critique', 'audience_analysis', 'platform_analysis', 'risk_assessment', 'drivers', 'comparable_campaigns', 'industry_benchmarks'],
 };
 
+const VIDEO_TYPES = ['video/mp4', 'video/quicktime', 'video/webm', 'video/x-msvideo', 'video/mpeg'];
+
+async function analyzeVideoWithGemini(fileUri: string, mimeType: string, campaignContext: string): Promise<string> {
+  const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY!);
+  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
+
+  const result = await model.generateContent([
+    {
+      fileData: { mimeType, fileUri },
+    },
+    {
+      text: `You are a senior creative director analyzing a video ad campaign. Watch this video carefully and provide an exhaustive creative analysis.
+
+Campaign context: ${campaignContext}
+
+Analyze and describe in detail:
+1. OPENING HOOK (first 3 seconds): Exactly what happens, what is shown, what text/audio appears
+2. SCENE-BY-SCENE BREAKDOWN: Every scene, what's on screen, duration, transitions
+3. VISUALS: Color palette, typography, cinematography style, graphic elements, production quality
+4. AUDIO: Music style/genre/mood, voiceover (transcribe exactly), sound effects, audio pacing
+5. TEXT OVERLAYS: Every piece of text shown, when it appears, styling
+6. TALENT/PEOPLE: Who appears, how they're portrayed, their actions and expressions
+7. BRAND ELEMENTS: Logo appearances (when/where), brand colors used, brand name mentions
+8. CTA: What the call-to-action is, when it appears, how it's delivered
+9. PACING & EDITING: Cut frequency, rhythm, energy level, overall pace
+10. EMOTIONAL JOURNEY: What emotions does each section evoke, overall emotional arc
+11. PLATFORM FIT OBSERVATIONS: Does this feel native to its intended platform?
+12. STANDOUT MOMENTS: The single most impactful moment and why
+13. WEAKNESSES VISIBLE: Any production issues, unclear messaging, missed opportunities you observe
+
+Be brutally specific. Reference exact timestamps. This analysis will be the foundation for a full campaign effectiveness scoring.`,
+    },
+  ]);
+
+  return result.response.text();
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { intake, clarification, fileBase64, fileMediaType, fileName } = body;
+    const { intake, clarification, fileBase64, fileMediaType, fileName, geminiFileUri, geminiMimeType } = body;
+
+    const campaignContext = `
+Campaign: ${intake.campaignName}
+Goal: ${intake.goal}
+Target Audience: ${intake.audience}
+Platforms: ${intake.platforms?.join(', ') || 'Not specified'}
+Brief: ${intake.brief}
+    `.trim();
+
+    // If a video was uploaded via Gemini Files API, analyze it with Gemini first
+    let videoAnalysis = '';
+    if (geminiFileUri && geminiMimeType) {
+      try {
+        videoAnalysis = await analyzeVideoWithGemini(geminiFileUri, geminiMimeType, campaignContext);
+      } catch (e) {
+        console.error('Gemini video analysis failed:', e);
+        videoAnalysis = '(Video analysis unavailable — analyze based on brief alone)';
+      }
+    }
 
     const textContent = `
 CAMPAIGN TO ANALYZE:
@@ -274,20 +333,27 @@ Budget: ${intake.budget || 'Not specified'}
 Timeline: ${intake.timeline || 'Not specified'}
 Tone/Mood: ${intake.tone || 'Not specified'}
 Competitor Notes: ${intake.competitorNotes || 'None provided'}
-Reference Links: ${intake.referenceLinks?.filter(Boolean).join(', ') || 'None'}
 ${fileName ? `Uploaded File: ${fileName}` : ''}
+
+${videoAnalysis ? `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+VIDEO CREATIVE ANALYSIS (from Gemini 1.5 Pro — watched the full video)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${videoAnalysis}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Use the above video analysis as your primary creative reference. Every driver score and insight must reference specific moments, visuals, audio elements, and scenes described above.` : ''}
 
 CLARIFICATION Q&A:
 ${clarification.questions.map((q: string, i: number) => `Q: ${q}\nA: ${clarification.answers[i] || '(no answer)'}`).join('\n\n')}
 
-Produce an EXHAUSTIVE, IN-DEPTH analysis. Every section should be detailed and specific to this campaign. Do not be brief. Do not be generic. Reference the actual campaign details in every insight.
+Produce an EXHAUSTIVE, IN-DEPTH analysis. Every section must be detailed and specific to this campaign. Reference the actual video content, campaign details, and clarification answers in every insight.
     `.trim();
 
-    // Build message content — include file if provided
+    // Build message content — include PDF/image file if provided (not video — those go via Gemini)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const messageContent: any[] = [];
 
-    if (fileBase64 && fileMediaType) {
+    if (fileBase64 && fileMediaType && !VIDEO_TYPES.includes(fileMediaType)) {
       if (fileMediaType === 'application/pdf') {
         messageContent.push({
           type: 'document',
