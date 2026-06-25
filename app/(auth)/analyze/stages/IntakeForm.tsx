@@ -154,22 +154,34 @@ export default function IntakeForm({ onSubmit }: Props) {
     startMessageCycle();
 
     try {
-      // Step 1: get signed upload URL (tiny JSON request, no file bytes through Vercel)
+      // Step 1: create DB row on server, get storage path back (no file bytes through Vercel)
       const initRes = await fetch('/api/upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fileName: file.name, mimeType: file.type }),
       });
-      const { uploadId, signedUrl, storagePath, error: initError } = await initRes.json();
-      if (initError || !uploadId || !signedUrl) throw new Error(initError || 'Upload init failed');
+      const { uploadId, storagePath, error: initError } = await initRes.json();
+      if (initError || !uploadId || !storagePath) throw new Error(initError || 'Upload init failed');
 
-      // Step 2: upload file directly to Supabase (bypasses Vercel body limit entirely)
-      const uploadRes = await fetch(signedUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': file.type || 'application/octet-stream' },
-        body: file,
-      });
-      if (!uploadRes.ok) throw new Error(`Storage upload failed: ${uploadRes.status}`);
+      // Step 2: upload file directly to Supabase using anon key (bypasses Vercel entirely)
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+      const uploadRes = await fetch(
+        `${supabaseUrl}/storage/v1/object/campaign-files/${storagePath}`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${supabaseAnonKey}`,
+            'Content-Type': file.type || 'application/octet-stream',
+            'x-upsert': 'false',
+          },
+          body: file,
+        }
+      );
+      if (!uploadRes.ok) {
+        const errText = await uploadRes.text();
+        throw new Error(`Storage upload failed: ${uploadRes.status} ${errText}`);
+      }
 
       // Step 3: trigger Inngest background processing
       await fetch('/api/upload', {
