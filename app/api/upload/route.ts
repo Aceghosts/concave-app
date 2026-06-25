@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
     console.log(`Uploading to storage path: ${storagePath}, buffer size: ${buffer.length}`);
 
     const { error: storageError } = await supabaseServer.storage
-      .from('campaign-files')
+      .from('CAMPAIGN-FILES')
       .upload(storagePath, buffer, { contentType: file.type || 'application/octet-stream', upsert: false });
 
     console.log(`Storage result: ${storageError ? storageError.message : 'success'}`);
