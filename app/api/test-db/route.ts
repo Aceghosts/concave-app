@@ -39,11 +39,12 @@ export async function GET() {
   }
 
   return NextResponse.json({
+    version: 'v3',
     url,
     anonKeyPresent: !!anonKey,
     serviceKeyPresent: !!serviceKey,
     anonFetch,
     serviceFetch,
-    supabaseJsTest,
+    supabaseJsTest: supabaseJsTest ?? 'not-reached',
   });
 }
