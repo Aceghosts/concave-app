@@ -22,6 +22,9 @@ export type IntakeData = {
   ideaFile: File | null;
   ideaType: 'none' | 'pptx' | 'canva';
   canvaLink: string;
+  // Set after background processing completes
+  uploadId: string | null;
+  extractedMd: string | null;
 };
 
 export type ClarificationData = {
@@ -48,56 +51,25 @@ export default function AnalyzePage() {
 
     const reportId = crypto.randomUUID();
 
-    const VIDEO_TYPES = ['video/mp4', 'video/quicktime', 'video/webm', 'video/x-msvideo', 'video/mpeg'];
-
     async function buildBody() {
       const body: Record<string, unknown> = { intake, clarification: data };
+
+      // If Inngest already extracted the file to MD, use that — no re-processing needed
+      if (intake?.extractedMd) {
+        body.extractedMd = intake.extractedMd;
+        body.fileName = intake.ideaFile?.name;
+        return body;
+      }
+
+      // Fallback: if file is still processing or upload was skipped, pass file inline
       const file = intake?.ideaFile;
       if (!file) return body;
 
+      const VIDEO_TYPES = ['video/mp4', 'video/quicktime', 'video/webm', 'video/x-msvideo', 'video/mpeg'];
       const isVideo = VIDEO_TYPES.includes(file.type) || /\.(mp4|mov|webm|avi|mpeg)$/i.test(file.name);
 
-      if (isVideo) {
-        // Step 1: get a Gemini resumable upload URL from our server
-        const initRes = await fetch('/api/upload', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ fileName: file.name, mimeType: file.type, fileSize: file.size }),
-        });
-        const { uploadUrl, error: initError } = await initRes.json();
-        if (initError || !uploadUrl) throw new Error(initError || 'Upload init failed');
-
-        // Step 2: upload file bytes directly to Gemini (bypasses Vercel body limit)
-        const uploadRes = await fetch(uploadUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Length': String(file.size),
-            'X-Goog-Upload-Offset': '0',
-            'X-Goog-Upload-Command': 'upload, finalize',
-          },
-          body: file,
-        });
-        if (!uploadRes.ok) throw new Error('Gemini upload failed');
-        const uploadedFile = await uploadRes.json();
-
-        // Step 3: poll until Gemini finishes processing the video
-        const geminiName = uploadedFile.file?.name;
-        if (geminiName) {
-          let state = 'PROCESSING';
-          while (state === 'PROCESSING') {
-            await new Promise(r => setTimeout(r, 3000));
-            const statusRes = await fetch(`/api/upload/status?name=${encodeURIComponent(geminiName)}`);
-            const status = await statusRes.json();
-            state = status.state;
-            if (state === 'ACTIVE') {
-              body.geminiFileUri = status.uri;
-              body.geminiMimeType = status.mimeType;
-            }
-          }
-        }
-        body.fileName = file.name;
-      } else {
-        // PDF / image — send as base64 directly to Claude
+      if (!isVideo) {
+        // PDF / image inline for small files
         const arrayBuffer = await file.arrayBuffer();
         const bytes = new Uint8Array(arrayBuffer);
         let binary = '';
@@ -106,6 +78,7 @@ export default function AnalyzePage() {
         body.fileMediaType = file.type || 'application/octet-stream';
         body.fileName = file.name;
       }
+      // Videos without extractedMd: analysis will proceed without the file content
       return body;
     }
 

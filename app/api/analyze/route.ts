@@ -300,7 +300,7 @@ Be brutally specific. Reference exact timestamps. This analysis will be the foun
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { intake, clarification, fileBase64, fileMediaType, fileName, geminiFileUri, geminiMimeType } = body;
+    const { intake, clarification, fileBase64, fileMediaType, fileName, geminiFileUri, geminiMimeType, extractedMd } = body;
 
     const campaignContext = `
 Campaign: ${intake.campaignName}
@@ -310,7 +310,7 @@ Platforms: ${intake.platforms?.join(', ') || 'Not specified'}
 Brief: ${intake.brief}
     `.trim();
 
-    // If a video was uploaded via Gemini Files API, analyze it with Gemini first
+    // If a video was uploaded via Gemini Files API (legacy direct path), analyze it with Gemini first
     let videoAnalysis = '';
     if (geminiFileUri && geminiMimeType) {
       try {
@@ -335,6 +335,14 @@ Tone/Mood: ${intake.tone || 'Not specified'}
 Competitor Notes: ${intake.competitorNotes || 'None provided'}
 ${fileName ? `Uploaded File: ${fileName}` : ''}
 
+${extractedMd ? `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EXTRACTED CREATIVE CONTENT (full file content — this is your primary reference)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${extractedMd}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The above is the FULL extracted content from the uploaded file. Every driver score and insight must reference specific details from the above content.` : ''}
+
 ${videoAnalysis ? `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 VIDEO CREATIVE ANALYSIS (from Gemini 1.5 Pro — watched the full video)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -346,7 +354,7 @@ Use the above video analysis as your primary creative reference. Every driver sc
 CLARIFICATION Q&A:
 ${clarification.questions.map((q: string, i: number) => `Q: ${q}\nA: ${clarification.answers[i] || '(no answer)'}`).join('\n\n')}
 
-Produce an EXHAUSTIVE, IN-DEPTH analysis. Every section must be detailed and specific to this campaign. Reference the actual video content, campaign details, and clarification answers in every insight.
+Produce an EXHAUSTIVE, IN-DEPTH analysis. Every section must be detailed and specific to this campaign. Reference the actual file content, campaign details, and clarification answers in every insight.
     `.trim();
 
     // Build message content — include PDF/image file if provided (not video — those go via Gemini)

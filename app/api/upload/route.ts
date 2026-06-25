@@ -1,51 +1,63 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-export const maxDuration = 300;
+export const maxDuration = 60;
 
-// Step 1 — client calls this to get a Gemini resumable upload URL
-// The actual file bytes are then uploaded directly from the browser to Gemini,
-// bypassing Vercel's body size limit entirely.
 export async function POST(req: NextRequest) {
   try {
-    const apiKey = process.env.GOOGLE_AI_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: 'Google AI API key not configured' }, { status: 500 });
+    const { supabaseServer } = await import('@/lib/supabase-server');
+    const { inngest } = await import('@/lib/inngest');
+
+    const formData = await req.formData();
+    const file = formData.get('file') as File | null;
+    const clientId = formData.get('clientId') as string | null;
+
+    if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+
+    // Upload raw file to Supabase Storage
+    const storagePath = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    const { error: storageError } = await supabaseServer.storage
+      .from('campaign-files')
+      .upload(storagePath, buffer, { contentType: file.type, upsert: false });
+
+    if (storageError) {
+      return NextResponse.json({ error: `Storage upload failed: ${storageError.message}` }, { status: 500 });
     }
 
-    const { fileName, mimeType, fileSize } = await req.json();
-    if (!fileName || !mimeType || !fileSize) {
-      return NextResponse.json({ error: 'fileName, mimeType, fileSize required' }, { status: 400 });
+    // Create uploads row
+    const { data: uploadRow, error: dbError } = await supabaseServer
+      .from('uploads')
+      .insert({
+        client_id: clientId || null,
+        file_name: file.name,
+        mime_type: file.type,
+        storage_path: storagePath,
+        status: 'pending',
+      })
+      .select()
+      .single();
+
+    if (dbError || !uploadRow) {
+      return NextResponse.json({ error: `DB insert failed: ${dbError?.message}` }, { status: 500 });
     }
 
-    // Initiate a resumable upload session with Gemini Files API
-    const initRes = await fetch(
-      `https://generativelanguage.googleapis.com/upload/v1beta/files?uploadType=resumable&key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: {
-          'X-Goog-Upload-Protocol': 'resumable',
-          'X-Goog-Upload-Command': 'start',
-          'X-Goog-Upload-Header-Content-Length': String(fileSize),
-          'X-Goog-Upload-Header-Content-Type': mimeType,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ file: { display_name: fileName } }),
-      }
-    );
+    // Fire Inngest background job
+    await inngest.send({
+      name: 'file/process',
+      data: {
+        uploadId: uploadRow.id,
+        storagePath,
+        fileName: file.name,
+        mimeType: file.type,
+        clientId: clientId || null,
+      },
+    });
 
-    if (!initRes.ok) {
-      const err = await initRes.text();
-      return NextResponse.json({ error: `Gemini init failed: ${err}` }, { status: 500 });
-    }
-
-    const uploadUrl = initRes.headers.get('x-goog-upload-url');
-    if (!uploadUrl) {
-      return NextResponse.json({ error: 'No upload URL returned by Gemini' }, { status: 500 });
-    }
-
-    return NextResponse.json({ uploadUrl });
+    return NextResponse.json({ uploadId: uploadRow.id });
   } catch (err: unknown) {
-    console.error('Upload init error:', err);
-    return NextResponse.json({ error: err instanceof Error ? err.message : 'Failed' }, { status: 500 });
+    console.error('Upload error:', err);
+    return NextResponse.json({ error: err instanceof Error ? err.message : 'Upload failed' }, { status: 500 });
   }
 }
