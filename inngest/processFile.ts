@@ -13,7 +13,7 @@ async function getSupabase() {
 async function downloadFromSupabase(storagePath: string): Promise<Buffer> {
   const sb = await getSupabase();
   const { data, error } = await sb.storage
-    .from('CAMPAIGN-FILES')
+    .from('campaign-files')
     .download(storagePath);
   if (error || !data) throw new Error(`Storage download failed: ${error?.message}`);
   const arrayBuffer = await data.arrayBuffer();

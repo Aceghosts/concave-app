@@ -1,44 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-export const maxDuration = 60;
+export const maxDuration = 30;
 
+// Returns a signed upload URL so the browser can upload directly to Supabase Storage
+// This bypasses Vercel's 4.5MB body limit entirely
 export async function POST(req: NextRequest) {
   try {
     const { supabaseServer } = await import('@/lib/supabase-server');
-    const { inngest } = await import('@/lib/inngest');
+    const { fileName, mimeType, clientId } = await req.json();
 
-    const formData = await req.formData();
-    const file = formData.get('file') as File | null;
-    const clientId = formData.get('clientId') as string | null;
-
-    if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 });
-
-    console.log(`Upload: ${file.name}, size: ${file.size}, type: ${file.type}`);
-
-    // Upload raw file to Supabase Storage
-    const storagePath = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    console.log(`Uploading to storage path: ${storagePath}, buffer size: ${buffer.length}`);
-
-    const { error: storageError } = await supabaseServer.storage
-      .from('CAMPAIGN-FILES')
-      .upload(storagePath, buffer, { contentType: file.type || 'application/octet-stream', upsert: false });
-
-    console.log(`Storage result: ${storageError ? storageError.message : 'success'}`);
-
-    if (storageError) {
-      return NextResponse.json({ error: `Storage upload failed: ${storageError.message}` }, { status: 500 });
+    if (!fileName || !mimeType) {
+      return NextResponse.json({ error: 'fileName and mimeType required' }, { status: 400 });
     }
 
-    // Create uploads row
+    const storagePath = `${Date.now()}_${fileName.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+
+    // Create a signed upload URL (browser uploads directly to Supabase)
+    const { data: signedData, error: signedError } = await supabaseServer.storage
+      .from('campaign-files')
+      .createSignedUploadUrl(storagePath);
+
+    if (signedError || !signedData) {
+      console.error('Signed URL error:', signedError);
+      return NextResponse.json({ error: `Failed to create upload URL: ${signedError?.message}` }, { status: 500 });
+    }
+
+    // Pre-create the uploads row so we have an ID to poll
     const { data: uploadRow, error: dbError } = await supabaseServer
       .from('uploads')
       .insert({
         client_id: clientId || null,
-        file_name: file.name,
-        mime_type: file.type,
+        file_name: fileName,
+        mime_type: mimeType,
         storage_path: storagePath,
         status: 'pending',
       })
@@ -46,24 +39,35 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (dbError || !uploadRow) {
+      console.error('DB error:', dbError);
       return NextResponse.json({ error: `DB insert failed: ${dbError?.message}` }, { status: 500 });
     }
 
-    // Fire Inngest background job
+    return NextResponse.json({
+      uploadId: uploadRow.id,
+      signedUrl: signedData.signedUrl,
+      storagePath,
+    });
+  } catch (err: unknown) {
+    console.error('Upload init error:', err);
+    return NextResponse.json({ error: err instanceof Error ? err.message : 'Upload failed' }, { status: 500 });
+  }
+}
+
+// Called after browser finishes uploading — triggers Inngest processing job
+export async function PUT(req: NextRequest) {
+  try {
+    const { inngest } = await import('@/lib/inngest');
+    const { uploadId, storagePath, fileName, mimeType, clientId } = await req.json();
+
     await inngest.send({
       name: 'file/process',
-      data: {
-        uploadId: uploadRow.id,
-        storagePath,
-        fileName: file.name,
-        mimeType: file.type,
-        clientId: clientId || null,
-      },
+      data: { uploadId, storagePath, fileName, mimeType, clientId: clientId || null },
     });
 
-    return NextResponse.json({ uploadId: uploadRow.id });
+    return NextResponse.json({ ok: true });
   } catch (err: unknown) {
-    console.error('Upload error:', err);
-    return NextResponse.json({ error: err instanceof Error ? err.message : 'Upload failed' }, { status: 500 });
+    console.error('Trigger error:', err);
+    return NextResponse.json({ error: err instanceof Error ? err.message : 'Trigger failed' }, { status: 500 });
   }
 }

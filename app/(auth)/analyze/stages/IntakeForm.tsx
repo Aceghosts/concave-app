@@ -154,16 +154,33 @@ export default function IntakeForm({ onSubmit }: Props) {
     startMessageCycle();
 
     try {
-      // Upload to server → Supabase Storage → triggers Inngest job
-      const fd = new FormData();
-      fd.append('file', file);
-      const res = await fetch('/api/upload', { method: 'POST', body: fd });
-      const { uploadId, error } = await res.json();
-      if (error || !uploadId) throw new Error(error || 'Upload failed');
+      // Step 1: get signed upload URL (tiny JSON request, no file bytes through Vercel)
+      const initRes = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileName: file.name, mimeType: file.type }),
+      });
+      const { uploadId, signedUrl, storagePath, error: initError } = await initRes.json();
+      if (initError || !uploadId || !signedUrl) throw new Error(initError || 'Upload init failed');
+
+      // Step 2: upload file directly to Supabase (bypasses Vercel body limit entirely)
+      const uploadRes = await fetch(signedUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': file.type || 'application/octet-stream' },
+        body: file,
+      });
+      if (!uploadRes.ok) throw new Error(`Storage upload failed: ${uploadRes.status}`);
+
+      // Step 3: trigger Inngest background processing
+      await fetch('/api/upload', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uploadId, storagePath, fileName: file.name, mimeType: file.type }),
+      });
 
       setUploadStatus('processing');
 
-      // Poll until ready
+      // Step 4: poll until Inngest job completes
       const poll = async () => {
         const statusRes = await fetch(`/api/upload/status?id=${uploadId}`);
         const status = await statusRes.json();
