@@ -176,6 +176,7 @@ export default function IntakeForm({ onSubmit }: Props) {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${supabaseAnonKey}`,
+              'apikey': supabaseAnonKey,
               'Content-Type': file.type || 'application/octet-stream',
               'x-upsert': 'false',
             },
