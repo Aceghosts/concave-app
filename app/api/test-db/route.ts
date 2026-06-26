@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import https from 'https';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 30;
 
 export async function GET() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -14,13 +16,28 @@ export async function GET() {
     return `${e.message}${cause ? ` | cause: ${cause instanceof Error ? cause.message : String(cause)}` : ''}`;
   }
 
-  // Test general internet connectivity
+  // Test general internet connectivity via fetch
   let internetTest: string;
   try {
     const res = await fetch('https://httpbin.org/get', { signal: AbortSignal.timeout(5000) });
-    internetTest = `${res.status}`;
+    internetTest = `fetch:${res.status}`;
   } catch (e: unknown) {
-    internetTest = `failed: ${errDetail(e)}`;
+    internetTest = `fetch failed: ${errDetail(e)}`;
+  }
+
+  // Test via native https module
+  let httpsTest: string;
+  try {
+    httpsTest = await new Promise((resolve, reject) => {
+      const req = https.get('https://httpbin.org/get', (res) => {
+        resolve(`https:${res.statusCode}`);
+        res.resume();
+      });
+      req.setTimeout(5000, () => { req.destroy(); reject(new Error('timeout')); });
+      req.on('error', reject);
+    });
+  } catch (e: unknown) {
+    httpsTest = `https failed: ${e instanceof Error ? e.message : String(e)}`;
   }
 
   // Test anon key connection
@@ -46,7 +63,8 @@ export async function GET() {
   }
 
   return NextResponse.json({
-    version: 'v6',
+    version: 'v7',
+    httpsTest,
     url,
     urlRaw: JSON.stringify(url),
     urlLength: url?.length,
