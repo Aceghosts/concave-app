@@ -62,9 +62,38 @@ export async function GET() {
     supabaseJsTest = `exception: ${errDetail(e)}`;
   }
 
+  // Test storage bucket exists
+  let bucketTest: string;
+  try {
+    const res = await fetch(`${url}/storage/v1/bucket/campaign-files`, {
+      headers: { apikey: serviceKey!, Authorization: `Bearer ${serviceKey}` },
+      signal: AbortSignal.timeout(8000),
+    });
+    bucketTest = `${res.status} ${await res.text()}`;
+  } catch (e: unknown) {
+    bucketTest = `failed: ${errDetail(e)}`;
+  }
+
+  // Test small upload with service key
+  let uploadTest: string;
+  try {
+    const testContent = new Blob(['test'], { type: 'text/plain' });
+    const res = await fetch(`${url}/storage/v1/object/campaign-files/__test__.txt`, {
+      method: 'POST',
+      headers: { apikey: serviceKey!, Authorization: `Bearer ${serviceKey}`, 'Content-Type': 'text/plain', 'x-upsert': 'true' },
+      body: testContent,
+      signal: AbortSignal.timeout(8000),
+    });
+    uploadTest = `${res.status} ${await res.text()}`;
+  } catch (e: unknown) {
+    uploadTest = `failed: ${errDetail(e)}`;
+  }
+
   return NextResponse.json({
-    version: 'v7',
+    version: 'v8',
     httpsTest,
+    bucketTest,
+    uploadTest,
     url,
     urlRaw: JSON.stringify(url),
     urlLength: url?.length,
