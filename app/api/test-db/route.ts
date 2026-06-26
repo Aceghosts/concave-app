@@ -6,11 +6,21 @@ export async function GET() {
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+  // Test general internet connectivity
+  let internetTest: string;
+  try {
+    const res = await fetch('https://httpbin.org/get', { signal: AbortSignal.timeout(5000) });
+    internetTest = `${res.status}`;
+  } catch (e: unknown) {
+    internetTest = `failed: ${e instanceof Error ? e.message : String(e)}`;
+  }
+
   // Test anon key connection
   let anonFetch: string;
   try {
     const res = await fetch(`${url}/rest/v1/uploads?select=id&limit=1`, {
       headers: { apikey: anonKey!, Authorization: `Bearer ${anonKey}` },
+      signal: AbortSignal.timeout(10000),
     });
     anonFetch = `${res.status} ${await res.text()}`;
   } catch (e: unknown) {
@@ -22,6 +32,7 @@ export async function GET() {
   try {
     const res = await fetch(`${url}/rest/v1/uploads?select=id&limit=1`, {
       headers: { apikey: serviceKey!, Authorization: `Bearer ${serviceKey}` },
+      signal: AbortSignal.timeout(10000),
     });
     serviceFetch = `${res.status} ${await res.text()}`;
   } catch (e: unknown) {
@@ -39,12 +50,13 @@ export async function GET() {
   }
 
   return NextResponse.json({
-    version: 'v3',
+    version: 'v4',
     url,
     anonKeyPresent: !!anonKey,
     serviceKeyPresent: !!serviceKey,
+    internetTest,
     anonFetch,
     serviceFetch,
-    supabaseJsTest: supabaseJsTest ?? 'not-reached',
+    supabaseJsTest,
   });
 }
