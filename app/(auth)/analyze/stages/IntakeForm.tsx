@@ -163,22 +163,18 @@ export default function IntakeForm({ onSubmit }: Props) {
       const { uploadId, storagePath, error: initError } = await initRes.json();
       if (initError || !uploadId || !storagePath) throw new Error(initError || 'Upload init failed');
 
-      // Step 2: upload file directly to Supabase using anon key (bypasses Vercel entirely)
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+      // Step 2: upload file via server proxy (avoids CORS issues with direct Supabase upload)
       const uploadController = new AbortController();
-      const uploadTimeout = setTimeout(() => uploadController.abort(), 60000);
+      const uploadTimeout = setTimeout(() => uploadController.abort(), 120000);
       let uploadRes: Response;
       try {
         uploadRes = await fetch(
-          `${supabaseUrl}/storage/v1/object/campaign-files/${storagePath}`,
+          `/api/upload?path=${encodeURIComponent(storagePath)}`,
           {
-            method: 'POST',
+            method: 'PATCH',
             headers: {
-              'Authorization': `Bearer ${supabaseAnonKey}`,
-              'apikey': supabaseAnonKey,
               'Content-Type': file.type || 'application/octet-stream',
-              'x-upsert': 'false',
+              'x-mime-type': file.type || 'application/octet-stream',
             },
             body: file,
             signal: uploadController.signal,

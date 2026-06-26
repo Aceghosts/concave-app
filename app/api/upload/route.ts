@@ -41,6 +41,27 @@ export async function POST(req: NextRequest) {
   }
 }
 
+// Browser sends file bytes here; server uploads to Supabase Storage using service role (avoids CORS)
+export async function PATCH(req: NextRequest) {
+  try {
+    const { supabaseServer } = await import('@/lib/supabase-server');
+    const url = new URL(req.url);
+    const storagePath = url.searchParams.get('path');
+    const mimeType = req.headers.get('x-mime-type') || 'application/octet-stream';
+    if (!storagePath) return NextResponse.json({ error: 'path required' }, { status: 400 });
+
+    const bytes = await req.arrayBuffer();
+    const { error } = await supabaseServer.storage
+      .from('campaign-files')
+      .upload(storagePath, bytes, { contentType: mimeType, upsert: false });
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  } catch (err: unknown) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : 'Upload failed' }, { status: 500 });
+  }
+}
+
 // Called after browser finishes uploading — triggers Inngest processing job
 export async function PUT(req: NextRequest) {
   try {
