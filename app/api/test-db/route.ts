@@ -44,8 +44,10 @@ export async function GET() {
   }
 
   return NextResponse.json({
-    version: 'v5',
+    version: 'v6',
     url,
+    urlRaw: JSON.stringify(url),
+    urlLength: url?.length,
     anonKeyPresent: !!anonKey,
     serviceKeyPresent: !!serviceKey,
     internetTest,
