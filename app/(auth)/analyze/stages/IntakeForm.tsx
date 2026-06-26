@@ -166,21 +166,29 @@ export default function IntakeForm({ onSubmit }: Props) {
       // Step 2: upload file directly to Supabase using anon key (bypasses Vercel entirely)
       const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
       const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-      const uploadRes = await fetch(
-        `${supabaseUrl}/storage/v1/object/campaign-files/${storagePath}`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${supabaseAnonKey}`,
-            'Content-Type': file.type || 'application/octet-stream',
-            'x-upsert': 'false',
-          },
-          body: file,
-        }
-      );
+      const uploadController = new AbortController();
+      const uploadTimeout = setTimeout(() => uploadController.abort(), 60000);
+      let uploadRes: Response;
+      try {
+        uploadRes = await fetch(
+          `${supabaseUrl}/storage/v1/object/campaign-files/${storagePath}`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${supabaseAnonKey}`,
+              'Content-Type': file.type || 'application/octet-stream',
+              'x-upsert': 'false',
+            },
+            body: file,
+            signal: uploadController.signal,
+          }
+        );
+      } finally {
+        clearTimeout(uploadTimeout);
+      }
       if (!uploadRes.ok) {
         const errText = await uploadRes.text();
-        throw new Error(`Storage upload failed: ${uploadRes.status} ${errText}`);
+        throw new Error(`Storage upload failed (${uploadRes.status}): ${errText}`);
       }
 
       // Step 3: trigger Inngest background processing
