@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 // Server just creates the DB row and returns the storage path
 // Browser uploads directly to Supabase using the public anon key — no file bytes through Vercel
@@ -44,18 +44,34 @@ export async function POST(req: NextRequest) {
 // Browser sends file bytes here; server uploads to Supabase Storage using service role (avoids CORS)
 export async function PATCH(req: NextRequest) {
   try {
-    const { supabaseServer } = await import('@/lib/supabase-server');
-    const url = new URL(req.url);
-    const storagePath = url.searchParams.get('path');
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const reqUrl = new URL(req.url);
+    const storagePath = reqUrl.searchParams.get('path');
     const mimeType = req.headers.get('x-mime-type') || 'application/octet-stream';
     if (!storagePath) return NextResponse.json({ error: 'path required' }, { status: 400 });
 
     const bytes = await req.arrayBuffer();
-    const { error } = await supabaseServer.storage
-      .from('campaign-files')
-      .upload(storagePath, bytes, { contentType: mimeType, upsert: false });
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    const res = await fetch(
+      `${supabaseUrl}/storage/v1/object/campaign-files/${storagePath}`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${serviceKey}`,
+          apikey: serviceKey!,
+          'Content-Type': mimeType,
+          'x-upsert': 'false',
+        },
+        body: bytes,
+        signal: AbortSignal.timeout(55000),
+      }
+    );
+
+    if (!res.ok) {
+      const errText = await res.text();
+      return NextResponse.json({ error: `Storage ${res.status}: ${errText}` }, { status: 500 });
+    }
     return NextResponse.json({ ok: true });
   } catch (err: unknown) {
     return NextResponse.json({ error: err instanceof Error ? err.message : 'Upload failed' }, { status: 500 });

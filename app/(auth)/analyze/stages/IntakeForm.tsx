@@ -206,6 +206,30 @@ export default function IntakeForm({ onSubmit }: Props) {
           stopMessageCycle();
           setUploadStatus('ready');
           setData(d => ({ ...d, uploadId, extractedMd: status.extractedMd }));
+          // Pre-fill empty form fields from the extracted content
+          if (status.extractedMd) {
+            fetch('/api/prefill', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ extractedMd: status.extractedMd }),
+            })
+              .then(r => r.json())
+              .then((p) => {
+                if (p.error) return;
+                setData(d => ({
+                  ...d,
+                  campaignName: d.campaignName || p.campaignName || '',
+                  brief: d.brief || p.brief || '',
+                  goal: d.goal || p.goal || '',
+                  audience: d.audience || p.audience || '',
+                  platforms: d.platforms.length ? d.platforms : (p.platforms || []),
+                  budget: d.budget || p.budget || '',
+                  timeline: d.timeline || p.timeline || '',
+                  tone: d.tone || p.tone || '',
+                }));
+              })
+              .catch(() => {});
+          }
         } else if (status.status === 'failed') {
           stopMessageCycle();
           setUploadStatus('failed');
@@ -268,92 +292,12 @@ export default function IntakeForm({ onSubmit }: Props) {
           className="glass"
           style={{ padding: '32px 36px', display: 'flex', flexDirection: 'column', gap: 24 }}
         >
-          {/* Campaign Name */}
-          <div>
-            <label style={labelStyle}>Campaign Name *</label>
-            <input required value={data.campaignName}
-              onChange={e => setData(d => ({ ...d, campaignName: e.target.value }))}
-              placeholder="e.g. Ramadan 2025 Brand Push" className="input" />
-          </div>
-
-          {/* Brief */}
-          <div>
-            <label style={labelStyle}>Campaign Brief *</label>
-            <textarea required value={data.brief}
-              onChange={e => setData(d => ({ ...d, brief: e.target.value }))}
-              placeholder="Describe your campaign concept, key message, and what you're trying to achieve..."
-              rows={4} className="input" style={{ resize: 'vertical', lineHeight: 1.6 }} />
-          </div>
-
-          {/* Goal + Audience */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <div>
-              <label style={labelStyle}>Campaign Goal *</label>
-              <CustomSelect value={data.goal} onChange={v => setData(d => ({ ...d, goal: v }))} options={GOALS} placeholder="Select a goal" />
-            </div>
-            <div>
-              <label style={labelStyle}>Target Audience *</label>
-              <input required value={data.audience}
-                onChange={e => setData(d => ({ ...d, audience: e.target.value }))}
-                placeholder="e.g. Women 25–40, UAE" className="input" />
-            </div>
-          </div>
-
-          {/* Platforms */}
-          <div>
-            <label style={labelStyle}>Platform(s) *</label>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {PLATFORMS.map(p => {
-                const active = data.platforms.includes(p);
-                return (
-                  <motion.button key={p} type="button" whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
-                    onClick={() => togglePlatform(p)}
-                    style={{
-                      padding: '7px 16px', borderRadius: 20,
-                      border: active ? '1px solid #3EB489' : '1px solid var(--input-border)',
-                      background: active ? 'rgba(62,180,137,0.12)' : 'var(--input-bg)',
-                      color: active ? '#3EB489' : 'var(--text-muted)',
-                      fontFamily: 'var(--font-poppins)', fontSize: 13, fontWeight: 500,
-                      cursor: 'pointer', transition: 'all 0.15s',
-                    }}>{p}</motion.button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Budget + Timeline */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <div>
-              <label style={labelStyle}>Budget</label>
-              <input value={data.budget} onChange={e => setData(d => ({ ...d, budget: e.target.value }))} placeholder="e.g. $50,000" className="input" />
-            </div>
-            <div>
-              <label style={labelStyle}>Timeline</label>
-              <input value={data.timeline} onChange={e => setData(d => ({ ...d, timeline: e.target.value }))} placeholder="e.g. 4 weeks, Jun–Jul 2025" className="input" />
-            </div>
-          </div>
-
-          {/* Tone */}
-          <div>
-            <label style={labelStyle}>Tone / Mood</label>
-            <CustomSelect value={data.tone} onChange={v => setData(d => ({ ...d, tone: v }))} options={TONES} placeholder="Select a tone" />
-          </div>
-
-          {/* Competitor Notes */}
-          <div>
-            <label style={labelStyle}>Competitor Notes</label>
-            <textarea value={data.competitorNotes}
-              onChange={e => setData(d => ({ ...d, competitorNotes: e.target.value }))}
-              placeholder="Any competitor campaigns to be aware of or differentiate from..."
-              rows={2} className="input" style={{ resize: 'vertical', lineHeight: 1.6 }} />
-          </div>
-
           {/* File Upload */}
           <div>
             <label style={{ ...labelStyle, marginBottom: 4 }}>Upload Creative or Brief</label>
             <p style={{ fontFamily: 'var(--font-poppins)', fontSize: 12, color: 'var(--text-muted)', margin: '0 0 14px' }}>
               Any file type — <strong style={{ color: 'var(--text-secondary)' }}>PDF, PPTX, DOCX, MP4, MOV, JPG, PNG, MD, TXT</strong>
-              <br />Concave extracts all content and converts it to a structured brief before analysis.
+              <br />Concave extracts the content and auto-fills the form below — review, adjust, and analyze.
             </p>
 
             {/* No file yet — drop zone */}
@@ -393,7 +337,7 @@ export default function IntakeForm({ onSubmit }: Props) {
                       {data.ideaFile.name}
                     </p>
                     <p style={{ fontFamily: 'var(--font-poppins)', fontSize: 12, color: 'var(--text-muted)', margin: '2px 0 0' }}>
-                      {(data.ideaFile.size / 1024 / 1024).toFixed(1)} MB · {fileLabel(data.ideaFile.type, data.ideaFile.name)}
+                      {(data.ideaFile.size / 1024 / 1024).toFixed(1)} MB Â· {fileLabel(data.ideaFile.type, data.ideaFile.name)}
                     </p>
                   </div>
                   {!isProcessing && (
@@ -487,6 +431,86 @@ export default function IntakeForm({ onSubmit }: Props) {
             )}
           </div>
 
+          {/* Campaign Name */}
+          <div>
+            <label style={labelStyle}>Campaign Name *</label>
+            <input required value={data.campaignName}
+              onChange={e => setData(d => ({ ...d, campaignName: e.target.value }))}
+              placeholder="e.g. Ramadan 2025 Brand Push" className="input" />
+          </div>
+
+          {/* Brief */}
+          <div>
+            <label style={labelStyle}>Campaign Brief *</label>
+            <textarea required value={data.brief}
+              onChange={e => setData(d => ({ ...d, brief: e.target.value }))}
+              placeholder="Describe your campaign concept, key message, and what you're trying to achieve..."
+              rows={4} className="input" style={{ resize: 'vertical', lineHeight: 1.6 }} />
+          </div>
+
+          {/* Goal + Audience */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div>
+              <label style={labelStyle}>Campaign Goal *</label>
+              <CustomSelect value={data.goal} onChange={v => setData(d => ({ ...d, goal: v }))} options={GOALS} placeholder="Select a goal" />
+            </div>
+            <div>
+              <label style={labelStyle}>Target Audience *</label>
+              <input required value={data.audience}
+                onChange={e => setData(d => ({ ...d, audience: e.target.value }))}
+                placeholder="e.g. Women 25–40, UAE" className="input" />
+            </div>
+          </div>
+
+          {/* Platforms */}
+          <div>
+            <label style={labelStyle}>Platform(s) *</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {PLATFORMS.map(p => {
+                const active = data.platforms.includes(p);
+                return (
+                  <motion.button key={p} type="button" whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                    onClick={() => togglePlatform(p)}
+                    style={{
+                      padding: '7px 16px', borderRadius: 20,
+                      border: active ? '1px solid #3EB489' : '1px solid var(--input-border)',
+                      background: active ? 'rgba(62,180,137,0.12)' : 'var(--input-bg)',
+                      color: active ? '#3EB489' : 'var(--text-muted)',
+                      fontFamily: 'var(--font-poppins)', fontSize: 13, fontWeight: 500,
+                      cursor: 'pointer', transition: 'all 0.15s',
+                    }}>{p}</motion.button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Budget + Timeline */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div>
+              <label style={labelStyle}>Budget</label>
+              <input value={data.budget} onChange={e => setData(d => ({ ...d, budget: e.target.value }))} placeholder="e.g. $50,000" className="input" />
+            </div>
+            <div>
+              <label style={labelStyle}>Timeline</label>
+              <input value={data.timeline} onChange={e => setData(d => ({ ...d, timeline: e.target.value }))} placeholder="e.g. 4 weeks, Jun–Jul 2025" className="input" />
+            </div>
+          </div>
+
+          {/* Tone */}
+          <div>
+            <label style={labelStyle}>Tone / Mood</label>
+            <CustomSelect value={data.tone} onChange={v => setData(d => ({ ...d, tone: v }))} options={TONES} placeholder="Select a tone" />
+          </div>
+
+          {/* Competitor Notes */}
+          <div>
+            <label style={labelStyle}>Competitor Notes</label>
+            <textarea value={data.competitorNotes}
+              onChange={e => setData(d => ({ ...d, competitorNotes: e.target.value }))}
+              placeholder="Any competitor campaigns to be aware of or differentiate from..."
+              rows={2} className="input" style={{ resize: 'vertical', lineHeight: 1.6 }} />
+          </div>
+
           {/* Submit */}
           <motion.button
             type="submit"
@@ -494,7 +518,7 @@ export default function IntakeForm({ onSubmit }: Props) {
             className="btn-primary"
             style={{ width: '100%', padding: '14px', fontSize: 15, borderRadius: 14, marginTop: 4 }}
           >
-            {isProcessing ? 'Processing file... you can still continue →' : 'Analyze Campaign →'}
+            {isProcessing ? 'Processing file... you can still continue â†’' : 'Analyze Campaign â†’'}
           </motion.button>
         </motion.div>
       </form>
