@@ -378,6 +378,32 @@ export default function ReportPage() {
                       borderTop: 'none',
                       borderRadius: '0 0 16px 16px',
                     }}>
+                      {/* Sub-KPIs (Brainsuite-style) */}
+                      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                      {Array.isArray((driver as any).sub_kpis) && (driver as any).sub_kpis.length > 0 && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
+                          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                          {(driver as any).sub_kpis.map((k: { name: string; score: number; status: string; verdict: string; evidence?: string }, i: number) => {
+                            const kColor = k.status === 'green' ? '#3EB489' : k.status === 'amber' ? '#F59E0B' : '#EF4444';
+                            return (
+                              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '10px 12px', background: 'rgba(255,255,255,0.025)', border: '1px solid var(--border-subtle)', borderLeft: `3px solid ${kColor}`, borderRadius: 8 }}>
+                                <div className="font-bebas" style={{ fontSize: 26, color: kColor, lineHeight: 1, minWidth: 44, textAlign: 'right' }}>
+                                  {Math.round(k.score)}
+                                </div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <p style={{ fontFamily: 'var(--font-poppins)', fontSize: 10, fontWeight: 700, color: kColor, textTransform: 'uppercase', letterSpacing: '0.6px', margin: '0 0 3px' }}>
+                                    {k.name}
+                                  </p>
+                                  <p style={{ fontFamily: 'var(--font-poppins)', fontSize: 11, color: 'var(--text-secondary)', margin: 0, lineHeight: 1.45 }}>
+                                    {k.verdict}
+                                  </p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
                       <p style={{ fontFamily: 'var(--font-poppins)', fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7, marginBottom: 18 }}>
                         {driver.deep_analysis || driver.justification}
                       </p>

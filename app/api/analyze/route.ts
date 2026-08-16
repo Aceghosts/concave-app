@@ -89,6 +89,50 @@ THE 6 DRIVERS — ANALYTICAL LENS FOR EACH
    Research lens: Cialdini's influence principles; every CTA must have motivation (why act), ability (easy to act), and trigger (do it now)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SUB-KPI DECOMPOSITION (score every one, 0-100)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Each driver decomposes into named sub-KPIs. Score EVERY sub-KPI listed for its driver, 0-100 integer.
+Status thresholds: 70-100 = green, 40-69 = amber, 0-39 = red.
+Each sub-KPI needs a one-line plain-English verdict + the specific observable evidence.
+If a sub-KPI cannot be assessed from the materials provided (e.g. visual KPIs with no visual supplied), score it from what the brief implies and say so in the evidence field.
+
+ATTENTION sub-KPIs:
+• Visual Hierarchy — is there a clear 1-2-3 order the eye follows? Does the most important element win?
+• Key Message Attention — does the core message sit where attention naturally lands?
+• First-Impression Hook — thumb-stopping power in the first glance / first 3 seconds
+• Focal Competition — how many elements compete for attention; clutter penalty
+
+BRANDING sub-KPIs:
+• Brand Attention — logo/brand share of visual attention: size, placement, contrast
+• Product Attention — how much attention the product itself captures
+• Brand Color Coverage — presence of distinctive brand colors/assets across the creative
+• Earliest Brand Moment — how early the brand appears (first 3s for video, instantly visible for static)
+
+PROCESSING EASE sub-KPIs:
+• Visual Simplicity — element count, layout complexity, negative space
+• Legibility — font size/contrast/placement at actual viewing size (mobile thumbnail!)
+• Reading Time — total words vs. realistic view time on the platform (~3 words/sec; feed views are 1-3s)
+• Message Clarity — can a distracted viewer state what this ad wants in one sentence?
+
+STRATEGIC FIT sub-KPIs (score against the BRIEF — this is context Brainsuite doesn't have; use it hard):
+• Goal Fit — does the creative mechanically deliver on the stated campaign goal?
+• Audience Fit — mindset, culture, aspirations of the stated target audience
+• Platform Fit — native to each stated platform's format and viewing behavior
+• Tone Fit — matches the stated tone/mood and brand voice
+
+EMOTIONAL ENGAGEMENT sub-KPIs:
+• Visual Activation — arousal/energy of the imagery (Russell circumplex: activation axis)
+• Text Activation — energy and charge of the copy
+• Visual Sentiment — valence of the imagery (positive/negative and whether that's right for the goal)
+• Text Sentiment — valence of the copy
+
+PERSUASION sub-KPIs:
+• CTA Attention — is the call-to-action visible, prominent, findable?
+• Offer Clarity — is what-you-get and why-now unmistakable?
+• Fit to Needs (Visual) — does the imagery connect to a real need/desire of the audience?
+• Fit to Needs (Text) — does the copy speak to a real need/desire?
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 SCORING CALIBRATION
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 9.0–10: World-class — benchmarks like Nike "You Can't Stop Us," Apple "1984," Old Spice "Man Your Man Could Smell Like"
@@ -107,10 +151,27 @@ RULES:
 6. Flag uncertainty: use "likely," "unclear from brief," or "would need to see the full creative to confirm" where appropriate
 7. Go deep on MENA/Gulf cultural dynamics when relevant — this is a critical dimension most global tools miss`;
 
+const SUB_KPI_SCHEMA = {
+  type: 'array',
+  description: 'The named sub-KPIs for this driver (see system prompt for exact list per driver). Score each independently.',
+  items: {
+    type: 'object',
+    properties: {
+      name: { type: 'string', description: 'Exact sub-KPI name from the system prompt list for this driver' },
+      score: { type: 'number', description: '0-100 integer. Calibrated: 70+ green (strong), 40-69 amber (needs work), <40 red (critical)' },
+      status: { type: 'string', enum: ['green', 'amber', 'red'] },
+      verdict: { type: 'string', description: 'One plain-English sentence stating the finding, e.g. "The brand logo gets a low share of attention — under 2% of the frame, bottom-left corner."' },
+      evidence: { type: 'string', description: 'The specific observable detail from the creative/brief that justifies this score' },
+    },
+    required: ['name', 'score', 'status', 'verdict', 'evidence'],
+  },
+};
+
 const DRIVER_SCHEMA = {
   type: 'object',
   properties: {
     score: { type: 'number', description: 'Score 0-10, one decimal. Be calibrated and honest.' },
+    sub_kpis: SUB_KPI_SCHEMA,
     summary: { type: 'string', description: 'One sharp sentence — the single most important truth about this driver for this campaign.' },
     deep_analysis: { type: 'string', description: 'Comprehensive 5-8 sentence analysis. Reference specific details from the brief, files, and answers. Explain the WHY behind every observation. Include relevant research or industry knowledge where applicable.' },
     what_works: {
@@ -136,7 +197,7 @@ const DRIVER_SCHEMA = {
     },
     benchmark_context: { type: 'string', description: 'How does this driver compare to best-in-class campaigns in this category/platform? What does top quartile look like and how far is this campaign from it?' },
   },
-  required: ['score', 'summary', 'deep_analysis', 'what_works', 'what_doesnt', 'recommendations', 'benchmark_context'],
+  required: ['score', 'sub_kpis', 'summary', 'deep_analysis', 'what_works', 'what_doesnt', 'recommendations', 'benchmark_context'],
 };
 
 const SCHEMA = {
