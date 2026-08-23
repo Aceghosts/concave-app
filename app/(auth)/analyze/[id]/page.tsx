@@ -174,18 +174,29 @@ export default function ReportPage() {
   const [showBenchmarks, setShowBenchmarks] = useState(false);
   const [downloading, setDownloading] = useState(false);
 
+  const [loadError, setLoadError] = useState<string | null>(null);
+
   useEffect(() => {
     if (id === 'demo-report') {
       setReport(DEMO_REPORT as Report);
       return;
     }
-    const stored = localStorage.getItem(`report:${id}`);
-    if (stored) {
-      setReport(JSON.parse(stored));
-    } else {
-      setReport(DEMO_REPORT as Report);
-    }
+    fetch(`/api/analyses?id=${id}`)
+      .then(r => r.json())
+      .then(row => {
+        if (row.error) throw new Error(row.error);
+        setReport({ id: row.id, campaignName: row.campaign_name, ...row.report });
+      })
+      .catch(err => setLoadError(err instanceof Error ? err.message : 'Report not found'));
   }, [id]);
+
+  if (loadError) {
+    return (
+      <div style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <p style={{ fontFamily: 'var(--font-poppins)', fontSize: 14, color: 'var(--text-muted)' }}>Report not found — {loadError}</p>
+      </div>
+    );
+  }
 
   if (!report) {
     return (

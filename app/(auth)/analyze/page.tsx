@@ -39,6 +39,7 @@ export default function AnalyzePage() {
   const [stage, setStage] = useState<Stage>('intake');
   const [intake, setIntake] = useState<IntakeData | null>(null);
   const [clarification, setClarification] = useState<ClarificationData | null>(null);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
 
   function handleIntakeSubmit(data: IntakeData) {
     setIntake(data);
@@ -47,9 +48,8 @@ export default function AnalyzePage() {
 
   function handleClarificationSubmit(data: ClarificationData) {
     setClarification(data);
+    setAnalysisError(null);
     setStage('loading');
-
-    const reportId = crypto.randomUUID();
 
     async function buildBody() {
       const body: Record<string, unknown> = { intake, clarification: data };
@@ -90,15 +90,27 @@ export default function AnalyzePage() {
         body: JSON.stringify(body),
       }))
       .then(r => r.json())
-      .then(({ analysis, error }) => {
+      .then(async ({ analysis, error }) => {
         if (error || !analysis) throw new Error(error || 'No analysis');
-        const payload = { id: reportId, campaignName: intake!.campaignName, ...analysis };
-        localStorage.setItem(`report:${reportId}`, JSON.stringify(payload));
-        router.push(`/analyze/${reportId}`);
+        // Persist to Supabase; strip the File object from intake (not serializable)
+        const { ideaFile, ...intakeMeta } = intake!;
+        const saveRes = await fetch('/api/analyses', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            campaignName: intake!.campaignName,
+            intake: { ...intakeMeta, fileName: ideaFile?.name ?? null },
+            report: analysis,
+          }),
+        });
+        const { id, error: saveError } = await saveRes.json();
+        if (saveError || !id) throw new Error(saveError || 'Could not save analysis');
+        router.push(`/analyze/${id}`);
       })
       .catch(err => {
         console.error('Analysis failed:', err);
-        router.push('/analyze/demo-report');
+        setAnalysisError(err instanceof Error ? err.message : 'Analysis failed');
+        setStage('clarification');
       });
   }
 
@@ -127,6 +139,11 @@ export default function AnalyzePage() {
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
           >
+            {analysisError && (
+              <div style={{ maxWidth: 720, margin: '0 auto 16px', padding: '12px 16px', borderRadius: 12, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', fontFamily: 'var(--font-poppins)', fontSize: 13, color: '#EF4444' }}>
+                Analysis failed: {analysisError} — please try again.
+              </div>
+            )}
             <ClarificationStage intake={intake} onSubmit={handleClarificationSubmit} />
           </motion.div>
         )}

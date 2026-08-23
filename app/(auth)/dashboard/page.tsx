@@ -1,19 +1,13 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { TrendingUp, TrendingDown, Plus, ArrowRight, Sparkles } from 'lucide-react';
 import CountUp from '@/components/CountUp';
 
-const STATS = [
-  { label: 'Total Analyses', value: 0, decimals: 0, trend: '—', up: null, color: '#3EB489' },
-  { label: 'Avg Score',      value: 0, decimals: 1, trend: '—', up: null, color: '#3EB489' },
-  { label: 'This Month',     value: 0, decimals: 0, trend: '—', up: null, color: '#a78bfa' },
-  { label: 'Top Score',      value: 0, decimals: 1, trend: '—', up: null, color: '#22d3ee' },
-];
-
-const RECENT: { id: string; name: string; date: string; score: number; label: string; by: string }[] = [];
-const META:   { label: string; value: string }[] = [];
+type Recent = { id: string; name: string; date: string; score: number; label: string; by: string };
+const META: { label: string; value: string }[] = [];
 
 function scoreColor(s: number) {
   if (s >= 8) return '#3EB489';
@@ -32,6 +26,39 @@ const fadeUp = {
 
 export default function DashboardPage() {
   const router = useRouter();
+  const [RECENT, setRecent] = useState<Recent[]>([]);
+  const [STATS, setStats] = useState([
+    { label: 'Total Analyses', value: 0, decimals: 0, trend: '—', up: null as boolean | null, color: '#3EB489' },
+    { label: 'Avg Score',      value: 0, decimals: 1, trend: '—', up: null as boolean | null, color: '#3EB489' },
+    { label: 'This Month',     value: 0, decimals: 0, trend: '—', up: null as boolean | null, color: '#a78bfa' },
+    { label: 'Top Score',      value: 0, decimals: 1, trend: '—', up: null as boolean | null, color: '#22d3ee' },
+  ]);
+
+  useEffect(() => {
+    fetch('/api/analyses')
+      .then(r => r.json())
+      .then((rows: { id: string; campaign_name: string; overall_score: number | null; grade: string | null; created_at: string }[]) => {
+        if (!Array.isArray(rows) || rows.length === 0) return;
+        const scores = rows.map(r => Number(r.overall_score ?? 0));
+        const now = new Date();
+        const thisMonth = rows.filter(r => { const d = new Date(r.created_at); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); }).length;
+        setStats(s => [
+          { ...s[0], value: rows.length },
+          { ...s[1], value: scores.reduce((a, b) => a + b, 0) / scores.length },
+          { ...s[2], value: thisMonth },
+          { ...s[3], value: Math.max(...scores) },
+        ]);
+        setRecent(rows.slice(0, 5).map(r => ({
+          id: r.id,
+          name: r.campaign_name,
+          date: new Date(r.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
+          score: Number(r.overall_score ?? 0),
+          label: r.grade ?? '—',
+          by: 'Team',
+        })));
+      })
+      .catch(() => {});
+  }, []);
 
   return (
     <div style={{ padding: '36px 40px', maxWidth: 1260, margin: '0 auto' }}>

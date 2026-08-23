@@ -1,12 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { Search, BarChart3 } from 'lucide-react';
 
-// TODO: fetch from Supabase — select * from analyses order by created_at desc
-const CAMPAIGNS: { id: string; name: string; date: string; score: number; status: string; client: string }[] = [];
+type Campaign = { id: string; name: string; date: string; score: number; status: string; client: string };
 
 function scoreColor(score: number) {
   if (score >= 8) return '#3EB489';
@@ -22,8 +21,26 @@ const cardVariants = {
 export default function HistoryPage() {
   const router = useRouter();
   const [search, setSearch] = useState('');
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
 
-  const filtered = CAMPAIGNS.filter((c) =>
+  useEffect(() => {
+    fetch('/api/analyses')
+      .then(r => r.json())
+      .then((rows) => {
+        if (!Array.isArray(rows)) return;
+        setCampaigns(rows.map((r: { id: string; campaign_name: string; overall_score: number | null; grade: string | null; created_at: string }) => ({
+          id: r.id,
+          name: r.campaign_name,
+          date: new Date(r.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+          score: Number(r.overall_score ?? 0),
+          status: r.grade ?? '—',
+          client: 'All Clients',
+        })));
+      })
+      .catch(() => {});
+  }, []);
+
+  const filtered = campaigns.filter((c) =>
     c.name.toLowerCase().includes(search.toLowerCase()) ||
     c.client.toLowerCase().includes(search.toLowerCase())
   );
