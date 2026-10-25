@@ -636,22 +636,9 @@ export default function IntakeForm({ onSubmit }: Props) {
                   placeholder="Describe your campaign concept, key message, and what you're trying to achieve..."
                   rows={4} className="input" style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.6 }} />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                <div>
-                  <label style={labelStyle}>Campaign Goal *</label>
-                  <CustomSelect value={data.goal} onChange={v => setData(d => ({ ...d, goal: v }))} options={GOALS} placeholder="Select a goal" />
-                </div>
-                <div>
-                  <label style={labelStyle}>Tone / Mood</label>
-                  <CustomSelect value={data.tone} onChange={v => setData(d => ({ ...d, tone: v }))} options={TONES} placeholder="Select a tone" />
-                </div>
-              </div>
               <div>
-                <label style={labelStyle}>Competitor Notes</label>
-                <textarea value={data.competitorNotes}
-                  onChange={e => setData(d => ({ ...d, competitorNotes: e.target.value }))}
-                  placeholder="Any competitor campaigns to be aware of or differentiate from..."
-                  rows={2} className="input" style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.6 }} />
+                <label style={labelStyle}>Campaign Goal *</label>
+                <CustomSelect value={data.goal} onChange={v => setData(d => ({ ...d, goal: v }))} options={GOALS} placeholder="Select a goal" />
               </div>
             </div>
 
@@ -685,17 +672,39 @@ export default function IntakeForm({ onSubmit }: Props) {
                   })}
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                <div>
-                  <label style={labelStyle}>Budget</label>
-                  <input value={data.budget} onChange={e => setData(d => ({ ...d, budget: e.target.value }))} placeholder="e.g. $50,000" className="input" style={inputStyle} />
+            </div>
+
+            <hr style={{ border: 'none', borderTop: '1px solid var(--border-subtle)', margin: 0 }} />
+
+            {/* Optional enrichers — rarely change the score, kept out of the main flow */}
+            <details>
+              <summary style={{ cursor: 'pointer', fontFamily: 'var(--font-poppins)', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', letterSpacing: '0.4px' }}>
+                More context (optional) — tone, competitors, budget, timeline
+              </summary>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 16 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                  <div>
+                    <label style={labelStyle}>Tone / Mood</label>
+                    <CustomSelect value={data.tone} onChange={v => setData(d => ({ ...d, tone: v }))} options={TONES} placeholder="Select a tone" />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Budget</label>
+                    <input value={data.budget} onChange={e => setData(d => ({ ...d, budget: e.target.value }))} placeholder="e.g. $50,000" className="input" style={inputStyle} />
+                  </div>
                 </div>
                 <div>
                   <label style={labelStyle}>Timeline</label>
                   <input value={data.timeline} onChange={e => setData(d => ({ ...d, timeline: e.target.value }))} placeholder="e.g. 4 weeks, Jun–Jul 2025" className="input" style={inputStyle} />
                 </div>
+                <div>
+                  <label style={labelStyle}>Competitor Notes</label>
+                  <textarea value={data.competitorNotes}
+                    onChange={e => setData(d => ({ ...d, competitorNotes: e.target.value }))}
+                    placeholder="Any competitor campaigns to be aware of or differentiate from..."
+                    rows={2} className="input" style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.6 }} />
+                </div>
               </div>
-            </div>
+            </details>
           </motion.section>
         </div>
 
