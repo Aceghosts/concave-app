@@ -255,7 +255,7 @@ Core truths of the medium: attention decays non-linearly and every cut, lull or 
           'No identifiable peak', 'A peak exists but is conventional', 'A peak viewers will remember and retell'),
         kpi('Ending Payoff', 'Does the ending land the feeling and the brand together?',
           'Fizzles out or ends on logistics', 'Clean but forgettable close', 'Ending fuses emotional payoff with brand'),
-        kpi('Cultural Resonance', 'Authenticity to the audience\'s culture (MENA/Gulf depth where relevant)',
+        kpi('Cultural Resonance', 'Authenticity to the target audience\'s culture as stated in the brief',
           'Cultural notes false or imported', 'Culturally safe, surface-level', 'Deep, specific cultural truth handled authentically'),
       ],
       persuasion: [

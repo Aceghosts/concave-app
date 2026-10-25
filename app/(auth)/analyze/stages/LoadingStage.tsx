@@ -14,7 +14,7 @@ const STEPS = [
 
 // After all steps complete, cycle through these while waiting for the API
 const WAIT_MESSAGES = [
-  'Cross-referencing MENA market data...',
+  'Compiling the final report...',
   'Verifying psychological triggers...',
   'Calibrating scores against benchmarks...',
   'Finalizing your report...',

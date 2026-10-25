@@ -191,7 +191,7 @@ export default function ClientsPage() {
                   <input
                     value={addForm.name}
                     onChange={(e) => setAddForm(f => ({ ...f, name: e.target.value }))}
-                    placeholder="e.g. Nike MENA"
+                    placeholder="e.g. Acme Motors"
                     className="input"
                     required
                     autoFocus

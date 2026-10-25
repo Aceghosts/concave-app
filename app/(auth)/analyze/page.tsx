@@ -91,6 +91,8 @@ export default function AnalyzePage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
+        // Server maxDuration is 300s — abort shortly after so a dead connection fails loudly instead of spinning forever
+        signal: AbortSignal.timeout(330_000),
       }))
       .then(r => r.json())
       .then(async ({ analysis, error }) => {
@@ -112,7 +114,10 @@ export default function AnalyzePage() {
       })
       .catch(err => {
         console.error('Analysis failed:', err);
-        setAnalysisError(err instanceof Error ? err.message : 'Analysis failed');
+        const msg = err instanceof Error && err.name === 'TimeoutError'
+          ? 'The analysis took longer than 5 minutes and was cancelled. Please try again — if it keeps happening, try a smaller file or the text brief alone.'
+          : err instanceof Error ? err.message : 'Analysis failed';
+        setAnalysisError(msg);
         setStage('clarification');
       });
   }
