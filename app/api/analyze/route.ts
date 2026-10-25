@@ -174,14 +174,14 @@ const DRIVER_SCHEMA = {
     score: { type: 'number', description: 'Score 0-10, one decimal. Be calibrated and honest.' },
     sub_kpis: SUB_KPI_SCHEMA,
     summary: { type: 'string', description: 'One sharp sentence — the single most important truth about this driver for this campaign.' },
-    deep_analysis: { type: 'string', description: 'Comprehensive 5-8 sentence analysis. Reference specific details from the brief, files, and answers. Explain the WHY behind every observation. Include relevant research or industry knowledge where applicable.' },
+    deep_analysis: { type: 'string', description: 'Dense 2-3 sentence analysis. Reference specific details from the brief/files and explain the WHY — no filler.' },
     what_works: {
       type: 'array', items: { type: 'string' },
-      description: '3-5 specific strengths. Each must be a full sentence referencing something concrete from this campaign.',
+      description: '2-3 specific strengths. Each one sentence referencing something concrete from this campaign.',
     },
     what_doesnt: {
       type: 'array', items: { type: 'string' },
-      description: '3-5 specific weaknesses. Be direct. Each must reference something concrete.',
+      description: '2-3 specific weaknesses. Be direct. Each one sentence, concrete.',
     },
     recommendations: {
       type: 'array', items: {
@@ -194,9 +194,9 @@ const DRIVER_SCHEMA = {
         },
         required: ['priority', 'action', 'rationale', 'effort'],
       },
-      description: '3-4 recommendations, ordered by priority. Be specific enough that a creative team can act on it tomorrow.',
+      description: 'The 2 highest-impact recommendations, ordered by priority. Be specific enough that a creative team can act on it tomorrow.',
     },
-    benchmark_context: { type: 'string', description: 'How does this driver compare to best-in-class campaigns in this category/platform? What does top quartile look like and how far is this campaign from it?' },
+    benchmark_context: { type: 'string', description: 'One sentence: how this driver compares to best-in-class campaigns in this category/platform.' },
   },
   required: ['score', 'sub_kpis', 'summary', 'deep_analysis', 'what_works', 'what_doesnt', 'recommendations', 'benchmark_context'],
 };
@@ -206,7 +206,7 @@ const SCHEMA = {
   properties: {
     overall_score: { type: 'number', description: 'Weighted average. Weight: Attention 20%, Strategic Fit 20%, Emotional Engagement 18%, Persuasion 17%, Branding 13%, Processing Ease 12%.' },
     grade: { type: 'string', enum: ['Exceptional', 'Strong', 'Solid', 'Needs Work', 'Critical Issues'] },
-    executive_summary: { type: 'string', description: 'A hard-hitting 4-6 sentence executive summary. What is this campaign trying to do, how well does the creative deliver on that, what are the 2-3 things that will make or break it, and what is the overall prognosis? Be specific to this campaign.' },
+    executive_summary: { type: 'string', description: 'A hard-hitting 3-4 sentence executive summary: what the campaign is trying to do, how well the creative delivers, the 2-3 make-or-break factors, and the prognosis. Specific to this campaign.' },
     verdict: { type: 'string', description: '1-2 sentence bottom-line verdict. The thing a CEO needs to hear.' },
     top_recommendations: {
       type: 'array', items: { type: 'string' },
@@ -216,20 +216,20 @@ const SCHEMA = {
       type: 'object',
       description: 'In-depth critique of the creative execution itself',
       properties: {
-        concept_strength: { type: 'string', description: '3-4 sentences on the core creative concept — is it ownable, is it fresh, does it communicate the right thing?' },
-        execution_quality: { type: 'string', description: '3-4 sentences on the execution quality based on the brief/files provided' },
-        copy_analysis: { type: 'string', description: '3-4 sentences analyzing the copy strategy — headline, body, CTA. What is the copy doing well or failing at?' },
-        visual_analysis: { type: 'string', description: '3-4 sentences on visual direction, design choices, and production values if discernible from files or description' },
-        format_analysis: { type: 'string', description: '2-3 sentences on whether the format choice (Reel, Story, static, etc.) is right for the objective and audience' },
+        concept_strength: { type: 'string', description: '2 sentences on the core creative concept — is it ownable, is it fresh, does it communicate the right thing?' },
+        execution_quality: { type: 'string', description: '2 sentences on the execution quality based on the brief/files provided' },
+        copy_analysis: { type: 'string', description: '2 sentences analyzing the copy strategy — headline, body, CTA. What is the copy doing well or failing at?' },
+        visual_analysis: { type: 'string', description: '2 sentences on visual direction, design choices, and production values if discernible from files or description' },
+        format_analysis: { type: 'string', description: '1-2 sentences on whether the format choice (Reel, Story, static, etc.) is right for the objective and audience' },
       },
       required: ['concept_strength', 'execution_quality', 'copy_analysis', 'visual_analysis', 'format_analysis'],
     },
     audience_analysis: {
       type: 'object',
       properties: {
-        audience_fit: { type: 'string', description: '3-4 sentences on how well the creative matches the target audience — their mindset, motivations, cultural context, and platform behavior' },
-        cultural_relevance: { type: 'string', description: '3-4 sentences on cultural resonance for the target market stated in the brief. Does it feel local and authentic?' },
-        psychographic_alignment: { type: 'string', description: '2-3 sentences on whether the emotional and aspirational triggers in the creative match what this audience responds to' },
+        audience_fit: { type: 'string', description: '2 sentences on how well the creative matches the target audience — their mindset, motivations, cultural context, and platform behavior' },
+        cultural_relevance: { type: 'string', description: '2 sentences on cultural resonance for the target market stated in the brief. Does it feel local and authentic?' },
+        psychographic_alignment: { type: 'string', description: '1-2 sentences on whether the emotional and aspirational triggers in the creative match what this audience responds to' },
       },
       required: ['audience_fit', 'cultural_relevance', 'psychographic_alignment'],
     },
@@ -241,7 +241,7 @@ const SCHEMA = {
         properties: {
           platform: { type: 'string' },
           fit_score: { type: 'number', description: 'How well this creative fits this specific platform, 0-10' },
-          algorithm_considerations: { type: 'string', description: '2-3 sentences on how this platform\'s algorithm will treat this creative — what signals does it send, what will help or hurt distribution?' },
+          algorithm_considerations: { type: 'string', description: '1-2 sentences on how this platform\'s algorithm will treat this creative — what signals does it send, what will help or hurt distribution?' },
           format_recommendations: { type: 'string', description: 'Specific format, duration, and technical recommendations for this platform' },
           expected_performance: { type: 'string', description: 'Honest assessment of expected performance on this platform based on the creative quality and platform dynamics' },
         },
@@ -260,7 +260,7 @@ const SCHEMA = {
           description: 'Corresponding mitigation for each risk',
         },
         confidence_level: { type: 'string', enum: ['High', 'Medium', 'Low'], description: 'Overall confidence in campaign success' },
-        confidence_rationale: { type: 'string', description: '2-3 sentences explaining the confidence level' },
+        confidence_rationale: { type: 'string', description: '1-2 sentences explaining the confidence level' },
       },
       required: ['primary_risks', 'mitigation_strategies', 'confidence_level', 'confidence_rationale'],
     },
@@ -276,50 +276,8 @@ const SCHEMA = {
       },
       required: ['attention', 'branding', 'processing_ease', 'strategic_fit', 'emotional_engagement', 'persuasion'],
     },
-    comparable_campaigns: {
-      type: 'array',
-      description: '2-3 real comparable campaigns genuinely relevant to this campaign\'s industry, platform, goal, and audience.',
-      items: {
-        type: 'object',
-        properties: {
-          name:      { type: 'string' },
-          brand:     { type: 'string' },
-          platform:  { type: 'string' },
-          year:      { type: 'string' },
-          concept:   { type: 'string', description: '2-3 sentences on what made this campaign work or fail' },
-          metrics:   { type: 'object', properties: { views: { type: 'string' }, engagement: { type: 'string' }, sales_impact: { type: 'string' }, earned_media: { type: 'string' } } },
-          lesson:    { type: 'string', description: 'Specific lesson that applies to this campaign' },
-          relevance: { type: 'string', description: 'Why this campaign is comparable' },
-        },
-        required: ['name', 'brand', 'platform', 'year', 'concept', 'metrics', 'lesson', 'relevance'],
-      },
-    },
-    industry_benchmarks: {
-      type: 'object',
-      properties: {
-        context: { type: 'string' },
-        platform_benchmarks: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              platform:       { type: 'string' },
-              industry:       { type: 'string' },
-              avg_ctr:        { type: 'string' },
-              avg_cpm:        { type: 'string' },
-              avg_engagement: { type: 'string' },
-              avg_video_view: { type: 'string' },
-              what_it_means:  { type: 'string' },
-            },
-            required: ['platform', 'industry', 'avg_ctr', 'avg_cpm', 'avg_engagement', 'what_it_means'],
-          },
-        },
-        overall_insight: { type: 'string' },
-      },
-      required: ['context', 'platform_benchmarks', 'overall_insight'],
-    },
   },
-  required: ['overall_score', 'grade', 'executive_summary', 'verdict', 'top_recommendations', 'creative_critique', 'audience_analysis', 'platform_analysis', 'risk_assessment', 'drivers', 'comparable_campaigns', 'industry_benchmarks'],
+  required: ['overall_score', 'grade', 'executive_summary', 'verdict', 'top_recommendations', 'creative_critique', 'audience_analysis', 'platform_analysis', 'risk_assessment', 'drivers'],
 };
 
 // script_storyboard variant: same report shape, but `drivers` holds the 3 meta-lenses
