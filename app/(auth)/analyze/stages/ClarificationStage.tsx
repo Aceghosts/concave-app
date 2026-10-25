@@ -42,7 +42,7 @@ export default function ClarificationStage({ intake, onSubmit }: Props) {
           QUICK CLARIFICATION
         </h1>
         <p style={{ fontFamily: 'var(--font-poppins)', fontSize: 13, color: 'var(--text-muted)', margin: '6px 0 0' }}>
-          A few questions about <strong style={{ color: '#3EB489' }}>{intake.campaignName}</strong> to sharpen the analysis.
+          A few questions about <strong style={{ color: '#3DDCC8' }}>{intake.campaignName}</strong> to sharpen the analysis.
         </p>
       </div>
 
@@ -58,7 +58,7 @@ export default function ClarificationStage({ intake, onSubmit }: Props) {
               style={{ padding: '24px 28px' }}
             >
               <p style={{ fontFamily: 'var(--font-poppins)', fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', margin: '0 0 12px', lineHeight: 1.6 }}>
-                <span style={{ color: '#3EB489', fontWeight: 600 }}>Q{i + 1}. </span>{q}
+                <span style={{ color: '#3DDCC8', fontWeight: 600 }}>Q{i + 1}. </span>{q}
               </p>
               <textarea
                 value={answers[i]}
@@ -75,7 +75,7 @@ export default function ClarificationStage({ intake, onSubmit }: Props) {
                   resize: 'vertical',
                   lineHeight: 1.6,
                 }}
-                onFocus={(e) => { e.target.style.borderColor = '#3EB489'; e.target.style.boxShadow = '0 0 0 3px rgba(62,180,137,0.12)'; }}
+                onFocus={(e) => { e.target.style.borderColor = '#3DDCC8'; e.target.style.boxShadow = '0 0 0 3px rgba(61,220,200,0.12)'; }}
                 onBlur={(e) => { e.target.style.borderColor = ''; e.target.style.boxShadow = ''; }}
               />
             </motion.div>

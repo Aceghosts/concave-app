@@ -3,12 +3,12 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { Search, BarChart3 } from 'lucide-react';
+import { Search, BarChart3, CheckSquare, Square, GitCompare } from 'lucide-react';
 
 type Campaign = { id: string; name: string; date: string; score: number; status: string; client: string };
 
 function scoreColor(score: number) {
-  if (score >= 8) return '#3EB489';
+  if (score >= 8) return '#3DDCC8';
   if (score >= 6) return '#F59E0B';
   return '#EF4444';
 }
@@ -22,6 +22,16 @@ export default function HistoryPage() {
   const router = useRouter();
   const [search, setSearch] = useState('');
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  // Compare selection: exactly 2 analyses -> /compare?a=&b=
+  const [selected, setSelected] = useState<string[]>([]);
+
+  function toggleSelect(id: string) {
+    setSelected(sel =>
+      sel.includes(id) ? sel.filter(x => x !== id)
+      : sel.length >= 2 ? sel // cap at 2
+      : [...sel, id]
+    );
+  }
 
   useEffect(() => {
     fetch('/api/analyses')
@@ -98,6 +108,21 @@ export default function HistoryPage() {
             style={{ padding: '24px 28px', cursor: 'pointer' }}
           >
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
+              <button
+                type="button"
+                onClick={e => { e.stopPropagation(); toggleSelect(campaign.id); }}
+                aria-label={selected.includes(campaign.id) ? 'Deselect for comparison' : 'Select for comparison'}
+                aria-pressed={selected.includes(campaign.id)}
+                title={selected.length >= 2 && !selected.includes(campaign.id) ? 'Two analyses already selected' : 'Select to compare'}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer', padding: 2,
+                  marginRight: 10, flexShrink: 0, display: 'flex',
+                  color: selected.includes(campaign.id) ? '#3DDCC8' : 'var(--text-muted)',
+                  opacity: selected.length >= 2 && !selected.includes(campaign.id) ? 0.4 : 1,
+                }}
+              >
+                {selected.includes(campaign.id) ? <CheckSquare size={17} /> : <Square size={17} />}
+              </button>
               <div style={{ flex: 1, minWidth: 0, paddingRight: 16 }}>
                 <p style={{ fontFamily: 'var(--font-poppins)', fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {campaign.name}
@@ -129,6 +154,36 @@ export default function HistoryPage() {
           </motion.div>
         ))}
       </motion.div>
+
+      {/* Floating compare bar */}
+      {selected.length === 2 && (
+        <motion.div
+          initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}
+          style={{
+            position: 'fixed', bottom: 28, left: '50%', transform: 'translateX(-50%)',
+            zIndex: 60, display: 'flex', alignItems: 'center', gap: 12,
+          }}
+        >
+          <motion.button
+            whileHover={{ scale: 1.03, y: -1 }} whileTap={{ scale: 0.97 }}
+            onClick={() => router.push(`/compare?a=${selected[0]}&b=${selected[1]}`)}
+            className="btn-primary"
+            style={{ padding: '13px 26px', fontSize: 14, boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 0 24px rgba(61,220,200,0.35)' }}
+          >
+            <GitCompare size={15} /> Compare selected
+          </motion.button>
+          <button
+            onClick={() => setSelected([])}
+            style={{
+              background: 'var(--glass-bg)', border: '1px solid var(--glass-border)',
+              backdropFilter: 'blur(12px)', borderRadius: 10, padding: '12px 16px',
+              fontFamily: 'var(--font-poppins)', fontSize: 13, color: 'var(--text-secondary)', cursor: 'pointer',
+            }}
+          >
+            Clear
+          </button>
+        </motion.div>
+      )}
 
       {filtered.length === 0 && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ textAlign: 'center', padding: '80px 0' }}>

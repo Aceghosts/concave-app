@@ -4,6 +4,7 @@ import { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Upload, FileText, ChevronDown, Image, Video, CheckCircle, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import type { IntakeData } from '../page';
+import { CHANNELS, DEFAULT_CHANNEL, type ChannelId } from '@/lib/channels';
 
 const GOALS = ['Brand Awareness', 'Lead Generation', 'Sales Conversion', 'App Downloads', 'Community Growth', 'Event Promotion'];
 const PLATFORMS = ['Meta', 'Instagram', 'TikTok', 'YouTube', 'Snapchat', 'LinkedIn', 'Twitter/X'];
@@ -76,10 +77,10 @@ function CustomSelect({ value, onChange, options, placeholder }: {
                 onClick={() => { onChange(opt); setOpen(false); }}
                 style={{
                   width: '100%', padding: '11px 16px', background: 'none', border: 'none',
-                  color: opt === value ? '#3EB489' : 'var(--text-primary)',
+                  color: opt === value ? '#3DDCC8' : 'var(--text-primary)',
                   fontFamily: 'var(--font-poppins)', fontSize: 14, cursor: 'pointer',
                   textAlign: 'left', transition: 'background 0.12s',
-                  borderLeft: opt === value ? '3px solid #3EB489' : '3px solid transparent',
+                  borderLeft: opt === value ? '3px solid #3DDCC8' : '3px solid transparent',
                 }}
                 onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
                 onMouseLeave={e => (e.currentTarget.style.background = 'none')}
@@ -95,9 +96,9 @@ function CustomSelect({ value, onChange, options, placeholder }: {
 }
 
 function fileIcon(mimeType: string, fileName: string) {
-  if (mimeType.startsWith('video/') || /\.(mp4|mov|webm|avi)$/i.test(fileName)) return <Video size={22} color="#3EB489" />;
-  if (mimeType.startsWith('image/')) return <Image size={22} color="#3EB489" />;
-  return <FileText size={22} color="#3EB489" />;
+  if (mimeType.startsWith('video/') || /\.(mp4|mov|webm|avi)$/i.test(fileName)) return <Video size={22} color="#3DDCC8" />;
+  if (mimeType.startsWith('image/')) return <Image size={22} color="#3DDCC8" />;
+  return <FileText size={22} color="#3DDCC8" />;
 }
 
 function fileLabel(mimeType: string, fileName: string) {
@@ -120,6 +121,7 @@ const PROCESSING_MESSAGES = [
 
 export default function IntakeForm({ onSubmit }: Props) {
   const [data, setData] = useState<IntakeData>({
+    channel: DEFAULT_CHANNEL,
     campaignName: '', brief: '', goal: '', audience: '',
     platforms: [], budget: '', timeline: '', tone: '',
     competitorNotes: '', referenceLinks: [], externalResearch: true,
@@ -292,6 +294,71 @@ export default function IntakeForm({ onSubmit }: Props) {
           className="glass"
           style={{ padding: '32px 36px', display: 'flex', flexDirection: 'column', gap: 24 }}
         >
+          {/* Analysis App selector — first step */}
+          <div>
+            <label style={{ ...labelStyle, marginBottom: 4 }}>Analysis App *</label>
+            <p style={{ fontFamily: 'var(--font-poppins)', fontSize: 12, color: 'var(--text-muted)', margin: '0 0 14px' }}>
+              Pick the app that matches what you&apos;re scoring — each tunes the sub-KPIs to its medium.
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(196px, 1fr))', gap: 10 }}>
+              {Object.values(CHANNELS).map((ch) => {
+                const active = data.channel === ch.id;
+                return (
+                  <button
+                    key={ch.id}
+                    type="button"
+                    onClick={() => setData(d => ({ ...d, channel: ch.id as ChannelId }))}
+                    aria-pressed={active}
+                    style={{
+                      position: 'relative', textAlign: 'left', cursor: 'pointer',
+                      padding: '14px 14px 12px', borderRadius: 14,
+                      border: active ? '1px solid #3DDCC8' : '1px solid var(--glass-border)',
+                      background: active
+                        ? 'linear-gradient(180deg, rgba(61,220,200,0.12), rgba(124,140,255,0.06))'
+                        : 'var(--glass-bg)',
+                      boxShadow: active ? '0 0 24px rgba(61,220,200,0.14)' : 'none',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    {ch.id === 'campaign_brief' && (
+                      <span style={{
+                        position: 'absolute', top: 10, right: 10,
+                        fontFamily: 'var(--font-poppins)', fontSize: 9, fontWeight: 700,
+                        letterSpacing: '0.8px', textTransform: 'uppercase',
+                        color: '#070A14', background: 'var(--gradient-brand)',
+                        padding: '2px 8px', borderRadius: 99,
+                      }}>Flagship</span>
+                    )}
+                    <p style={{
+                      fontFamily: 'var(--font-poppins)', fontSize: 14, fontWeight: 600, margin: 0,
+                      color: active ? '#3DDCC8' : 'var(--text-primary)', paddingRight: ch.id === 'campaign_brief' ? 60 : 0,
+                    }}>
+                      {ch.label}
+                    </p>
+                    <p style={{
+                      fontFamily: 'var(--font-poppins)', fontSize: 11.5, lineHeight: 1.5,
+                      color: 'var(--text-muted)', margin: '6px 0 10px',
+                    }}>
+                      {ch.description}
+                    </p>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                      {ch.assetKinds.map(k => (
+                        <span key={k} style={{
+                          fontFamily: 'var(--font-poppins)', fontSize: 9.5, fontWeight: 600,
+                          textTransform: 'uppercase', letterSpacing: '0.5px',
+                          color: active ? '#3DDCC8' : 'var(--text-muted)',
+                          background: active ? 'rgba(61,220,200,0.10)' : 'rgba(255,255,255,0.05)',
+                          border: '1px solid var(--border-subtle)',
+                          padding: '2px 7px', borderRadius: 99,
+                        }}>{k}</span>
+                      ))}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {/* File Upload */}
           <div>
             <label style={{ ...labelStyle, marginBottom: 4 }}>Upload Creative or Brief</label>
@@ -308,12 +375,12 @@ export default function IntakeForm({ onSubmit }: Props) {
                 onDrop={e => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if (f) handleFileAccepted(f); }}
                 onClick={() => fileInputRef.current?.click()}
                 style={{
-                  border: `2px dashed ${dragOver ? '#3EB489' : 'rgba(62,180,137,0.25)'}`,
+                  border: `2px dashed ${dragOver ? '#3DDCC8' : 'rgba(61,220,200,0.25)'}`,
                   borderRadius: 16, padding: '32px 24px', textAlign: 'center', cursor: 'pointer',
-                  background: dragOver ? 'rgba(62,180,137,0.05)' : 'transparent', transition: 'all 0.2s',
+                  background: dragOver ? 'rgba(61,220,200,0.05)' : 'transparent', transition: 'all 0.2s',
                 }}
               >
-                <Upload size={26} color={dragOver ? '#3EB489' : 'var(--text-muted)'} style={{ margin: '0 auto 12px' }} />
+                <Upload size={26} color={dragOver ? '#3DDCC8' : 'var(--text-muted)'} style={{ margin: '0 auto 12px' }} />
                 <p style={{ fontFamily: 'var(--font-poppins)', fontSize: 14, fontWeight: 500, color: 'var(--text-secondary)', margin: 0 }}>
                   Drag & drop your file here
                 </p>
@@ -330,7 +397,7 @@ export default function IntakeForm({ onSubmit }: Props) {
             {data.ideaFile && (
               <div style={{ border: '1px solid var(--glass-border)', borderRadius: 14, overflow: 'hidden' }}>
                 {/* File row */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px', background: 'rgba(62,180,137,0.06)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px', background: 'rgba(61,220,200,0.06)' }}>
                   {fileIcon(data.ideaFile.type, data.ideaFile.name)}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ fontFamily: 'var(--font-poppins)', fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -355,7 +422,7 @@ export default function IntakeForm({ onSubmit }: Props) {
                         <motion.div
                           animate={{ rotate: 360 }}
                           transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }}
-                          style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid rgba(62,180,137,0.2)', borderTop: '2px solid #3EB489', flexShrink: 0 }}
+                          style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid rgba(61,220,200,0.2)', borderTop: '2px solid #3DDCC8', flexShrink: 0 }}
                         />
                         <motion.p
                           key={processingMsg}
@@ -369,7 +436,7 @@ export default function IntakeForm({ onSubmit }: Props) {
                         <motion.div
                           animate={{ x: ['-100%', '100%'] }}
                           transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
-                          style={{ height: '100%', width: '40%', background: 'linear-gradient(90deg, transparent, #3EB489, transparent)', borderRadius: 99 }}
+                          style={{ height: '100%', width: '40%', background: 'linear-gradient(90deg, transparent, #3DDCC8, transparent)', borderRadius: 99 }}
                         />
                       </div>
                     </div>
@@ -379,8 +446,8 @@ export default function IntakeForm({ onSubmit }: Props) {
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <CheckCircle size={16} color="#3EB489" />
-                          <span style={{ fontFamily: 'var(--font-poppins)', fontSize: 13, color: '#3EB489', fontWeight: 500 }}>
+                          <CheckCircle size={16} color="#3DDCC8" />
+                          <span style={{ fontFamily: 'var(--font-poppins)', fontSize: 13, color: '#3DDCC8', fontWeight: 500 }}>
                             Content extracted — ready for analysis
                           </span>
                         </div>
@@ -420,7 +487,7 @@ export default function IntakeForm({ onSubmit }: Props) {
                       <AlertCircle size={16} color="#EF4444" />
                       <span style={{ fontFamily: 'var(--font-poppins)', fontSize: 13, color: '#EF4444' }}>
                         {uploadError || 'Processing failed'} —{' '}
-                        <button type="button" onClick={removeFile} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#3EB489', fontFamily: 'var(--font-poppins)', fontSize: 13, padding: 0 }}>
+                        <button type="button" onClick={removeFile} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#3DDCC8', fontFamily: 'var(--font-poppins)', fontSize: 13, padding: 0 }}>
                           try again
                         </button>
                       </span>
@@ -473,9 +540,9 @@ export default function IntakeForm({ onSubmit }: Props) {
                     onClick={() => togglePlatform(p)}
                     style={{
                       padding: '7px 16px', borderRadius: 20,
-                      border: active ? '1px solid #3EB489' : '1px solid var(--input-border)',
-                      background: active ? 'rgba(62,180,137,0.12)' : 'var(--input-bg)',
-                      color: active ? '#3EB489' : 'var(--text-muted)',
+                      border: active ? '1px solid #3DDCC8' : '1px solid var(--input-border)',
+                      background: active ? 'rgba(61,220,200,0.12)' : 'var(--input-bg)',
+                      color: active ? '#3DDCC8' : 'var(--text-muted)',
                       fontFamily: 'var(--font-poppins)', fontSize: 13, fontWeight: 500,
                       cursor: 'pointer', transition: 'all 0.15s',
                     }}>{p}</motion.button>

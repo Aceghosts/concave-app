@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
 
     const { data, error } = await supabaseServer
       .from('analyses')
-      .select('id, campaign_name, client_id, overall_score, grade, created_at')
+      .select('id, campaign_name, client_id, overall_score, grade, created_at, channel:report->channel, schema_variant:report->schema_variant, drivers:report->drivers')
       .order('created_at', { ascending: false })
       .limit(200);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });

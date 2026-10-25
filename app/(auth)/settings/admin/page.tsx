@@ -14,7 +14,7 @@ const API_KEYS = [
 ];
 
 function statusColor(status: string) {
-  if (status === 'connected' || status === 'healthy') return '#3EB489';
+  if (status === 'connected' || status === 'healthy') return '#3DDCC8';
   if (status === 'partial') return '#F59E0B';
   if (status === 'pending') return '#F59E0B';
   return '#EF4444';
@@ -69,7 +69,7 @@ export default function AdminPage() {
             initial={{ opacity: 0 }} animate={{ opacity: 1 }}
             whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
             onClick={() => { setLoading(true); fetch('/api/health').then(r => r.json()).then(d => { setHealth(d); setLoading(false); }); }}
-            style={{ fontFamily: 'var(--font-poppins)', fontSize: 11, fontWeight: 600, color: '#3EB489', background: 'rgba(62,180,137,0.08)', border: '1px solid rgba(62,180,137,0.2)', borderRadius: 8, padding: '3px 10px', cursor: 'pointer' }}
+            style={{ fontFamily: 'var(--font-poppins)', fontSize: 11, fontWeight: 600, color: '#3DDCC8', background: 'rgba(61,220,200,0.08)', border: '1px solid rgba(61,220,200,0.2)', borderRadius: 8, padding: '3px 10px', cursor: 'pointer' }}
           >
             Refresh
           </motion.button>

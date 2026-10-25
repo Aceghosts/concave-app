@@ -6,8 +6,11 @@ import { useRouter } from 'next/navigation';
 import IntakeForm from './stages/IntakeForm';
 import ClarificationStage from './stages/ClarificationStage';
 import LoadingStage from './stages/LoadingStage';
+import { CHANNELS, DEFAULT_CHANNEL, type ChannelId } from '@/lib/channels';
 
 export type IntakeData = {
+  /** Analysis app (channel) — first intake step */
+  channel: ChannelId;
   campaignName: string;
   brief: string;
   goal: string;
@@ -52,7 +55,7 @@ export default function AnalyzePage() {
     setStage('loading');
 
     async function buildBody() {
-      const body: Record<string, unknown> = { intake, clarification: data };
+      const body: Record<string, unknown> = { intake, clarification: data, channel: intake?.channel ?? DEFAULT_CHANNEL };
 
       // If Inngest already extracted the file to MD, use that — no re-processing needed
       if (intake?.extractedMd) {
@@ -155,7 +158,7 @@ export default function AnalyzePage() {
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
           >
-            <LoadingStage onComplete={handleAnalysisComplete} />
+            <LoadingStage onComplete={handleAnalysisComplete} channelLabel={CHANNELS[intake.channel ?? DEFAULT_CHANNEL].label} />
           </motion.div>
         )}
       </AnimatePresence>

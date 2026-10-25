@@ -4,26 +4,25 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff, Loader2, Mail, Lock } from 'lucide-react';
-import MeshBackground from '@/components/MeshBackground';
 
-// Styles pinned to light values — card is always white glass regardless of theme
+// Concave 2.0 dark glass login — visual layer only; credential logic unchanged.
 const label: React.CSSProperties = {
   display: 'block',
-  fontFamily: 'var(--font-poppins)', fontSize: 11, fontWeight: 600,
-  color: '#475569', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 7,
+  fontFamily: 'var(--font-poppins)', fontSize: 11, fontWeight: 700,
+  color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1.4px', marginBottom: 7,
 };
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
-  background: 'rgba(241,245,249,0.70)',
-  border: '1.5px solid rgba(0,0,0,0.08)',
+  background: 'var(--input-bg)',
+  border: '1.5px solid var(--input-border)',
   borderRadius: 12,
-  padding: '11px 14px',
+  padding: '12px 14px',
   fontFamily: 'var(--font-poppins)',
   fontSize: 14,
-  color: '#0F172A',
+  color: 'var(--text-primary)',
   outline: 'none',
-  transition: 'border-color 0.2s, box-shadow 0.2s',
+  transition: 'border-color 0.2s, box-shadow 0.2s, background 0.2s',
 };
 
 export default function LoginPage() {
@@ -54,14 +53,14 @@ export default function LoginPage() {
   }
 
   function onFocus(e: React.FocusEvent<HTMLInputElement>) {
-    e.target.style.borderColor = '#3EB489';
-    e.target.style.boxShadow = '0 0 0 3px rgba(62,180,137,0.15)';
-    e.target.style.background = 'rgba(255,255,255,0.90)';
+    e.target.style.borderColor = '#3DDCC8';
+    e.target.style.boxShadow = '0 0 0 3px rgba(61,220,200,0.14)';
+    e.target.style.background = 'rgba(255,255,255,0.08)';
   }
   function onBlur(e: React.FocusEvent<HTMLInputElement>) {
-    e.target.style.borderColor = 'rgba(0,0,0,0.08)';
+    e.target.style.borderColor = 'var(--input-border)';
     e.target.style.boxShadow = 'none';
-    e.target.style.background = 'rgba(241,245,249,0.70)';
+    e.target.style.background = 'var(--input-bg)';
   }
 
   return (
@@ -71,16 +70,29 @@ export default function LoginPage() {
       alignItems: 'center',
       justifyContent: 'center',
       position: 'relative',
+      overflow: 'hidden',
       padding: 24,
-      background: 'var(--bg-base)',
+      background: 'radial-gradient(120% 90% at 50% 0%, #10182E 0%, #070A14 70%)',
     }}>
-      <MeshBackground highOpacity />
-
-      {/* Dot grid texture */}
-      <div style={{
-        position: 'fixed', inset: 0, zIndex: 1, pointerEvents: 'none',
-        backgroundImage: 'radial-gradient(rgba(62,180,137,0.12) 1px, transparent 1px)',
-        backgroundSize: '28px 28px',
+      {/* Ambient glows */}
+      <div aria-hidden style={{
+        position: 'absolute', top: '-30%', left: '50%', transform: 'translateX(-50%)',
+        width: 1000, height: 600, borderRadius: '50%', pointerEvents: 'none',
+        background: 'radial-gradient(closest-side, rgba(61,220,200,0.14), transparent 70%)',
+        filter: 'blur(48px)',
+      }} />
+      <div aria-hidden style={{
+        position: 'absolute', right: '-15%', bottom: '-10%',
+        width: 700, height: 500, borderRadius: '50%', pointerEvents: 'none',
+        background: 'radial-gradient(closest-side, rgba(124,140,255,0.13), transparent 70%)',
+        filter: 'blur(56px)',
+      }} />
+      {/* Faint grid texture */}
+      <div aria-hidden style={{
+        position: 'fixed', inset: 0, zIndex: 1, pointerEvents: 'none', opacity: 0.7,
+        backgroundImage:
+          'linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)',
+        backgroundSize: '48px 48px',
       }} />
 
       <motion.div
@@ -90,35 +102,45 @@ export default function LoginPage() {
         style={{
           position: 'relative', zIndex: 2,
           width: '100%', maxWidth: 420,
-          background: 'rgba(255,255,255,0.82)',
-          backdropFilter: 'blur(40px) saturate(180%)',
-          WebkitBackdropFilter: 'blur(40px) saturate(180%)',
-          border: '1px solid rgba(255,255,255,0.70)',
-          borderRadius: 28,
-          boxShadow: '0 24px 72px rgba(0,0,0,0.18), 0 8px 24px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,1)',
+          border: '1px solid transparent',
+          background:
+            'linear-gradient(180deg, rgba(16,24,46,0.88), rgba(10,14,26,0.92)) padding-box, linear-gradient(155deg, rgba(255,255,255,0.26) 0%, rgba(255,255,255,0.07) 32%, rgba(61,220,200,0.25) 72%, rgba(124,140,255,0.32) 100%) border-box',
+          backdropFilter: 'blur(24px) saturate(140%)',
+          WebkitBackdropFilter: 'blur(24px) saturate(140%)',
+          borderRadius: 24,
+          boxShadow: '0 24px 72px rgba(0,0,0,0.55), 0 0 48px rgba(61,220,200,0.10), inset 0 1px 0 rgba(255,255,255,0.10)',
           padding: '44px 40px',
         }}
       >
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-            <span className="shimmer-text font-bebas" style={{ fontSize: 44, letterSpacing: 2, display: 'block', lineHeight: 1 }}>
-              CONCAVE
+            <span aria-hidden style={{
+              display: 'inline-block', width: 40, height: 40, borderRadius: 11,
+              background: 'var(--gradient-brand)',
+              boxShadow: '0 0 24px rgba(61,220,200,0.35)',
+              marginBottom: 14,
+            }} />
+            <span style={{
+              fontFamily: 'var(--font-bebas)', fontWeight: 600, fontSize: 32,
+              letterSpacing: '-0.02em', display: 'block', lineHeight: 1, color: 'var(--text-primary)',
+            }}>
+              Concave
             </span>
-            <p style={{ fontFamily: 'var(--font-poppins)', fontWeight: 400, fontSize: 13, color: '#64748B', marginTop: 6 }}>
+            <p style={{ fontFamily: 'var(--font-poppins)', fontWeight: 400, fontSize: 13, color: 'var(--text-muted)', marginTop: 8 }}>
               Campaign Analysis Engine
             </p>
           </motion.div>
         </div>
 
-        <div style={{ height: 1, background: 'rgba(0,0,0,0.07)', marginBottom: 28 }} />
+        <div style={{ height: 1, background: 'var(--border-subtle)', marginBottom: 28 }} />
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {/* Email */}
           <div>
             <label style={label}>Email</label>
             <div style={{ position: 'relative' }}>
-              <Mail size={15} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8', pointerEvents: 'none' }} />
+              <Mail size={15} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
               <input
                 type="email" required value={email}
                 onChange={e => setEmail(e.target.value)}
@@ -133,7 +155,7 @@ export default function LoginPage() {
           <div>
             <label style={label}>Password</label>
             <div style={{ position: 'relative' }}>
-              <Lock size={15} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8', pointerEvents: 'none' }} />
+              <Lock size={15} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
               <input
                 type={showPw ? 'text' : 'password'} required value={password}
                 onChange={e => setPassword(e.target.value)}
@@ -142,7 +164,8 @@ export default function LoginPage() {
                 onFocus={onFocus} onBlur={onBlur}
               />
               <button type="button" onClick={() => setShowPw(!showPw)}
-                style={{ position: 'absolute', right: 13, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', display: 'flex', padding: 4 }}>
+                aria-label={showPw ? 'Hide password' : 'Show password'}
+                style={{ position: 'absolute', right: 13, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: 4 }}>
                 {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
               </button>
             </div>
@@ -153,10 +176,10 @@ export default function LoginPage() {
               initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
               style={{
                 padding: '10px 14px',
-                background: 'rgba(239,68,68,0.08)',
-                border: '1px solid rgba(239,68,68,0.20)',
+                background: 'rgba(248,113,113,0.12)',
+                border: '1px solid rgba(248,113,113,0.30)',
                 borderRadius: 10,
-                fontFamily: 'var(--font-poppins)', fontSize: 13, color: '#DC2626', textAlign: 'center',
+                fontFamily: 'var(--font-poppins)', fontSize: 13, color: '#F87171', textAlign: 'center',
               }}
             >
               {error}
@@ -168,13 +191,13 @@ export default function LoginPage() {
             whileHover={{ scale: 1.02, y: -1 }}
             whileTap={{ scale: 0.98 }}
             className="btn-primary"
-            style={{ width: '100%', padding: '13px', marginTop: 4, fontSize: 15, borderRadius: 14, opacity: loading ? 0.85 : 1 }}
+            style={{ width: '100%', padding: '13px', marginTop: 4, fontSize: 15, borderRadius: 12, opacity: loading ? 0.85 : 1 }}
           >
             {loading ? <><Loader2 size={16} className="spin" /> Signing in...</> : 'Sign In →'}
           </motion.button>
         </form>
 
-        <p style={{ textAlign: 'center', fontFamily: 'var(--font-poppins)', fontSize: 11, color: '#94A3B8', marginTop: 24 }}>
+        <p style={{ textAlign: 'center', fontFamily: 'var(--font-poppins)', fontSize: 11, color: 'var(--text-muted)', marginTop: 24 }}>
           Internal tool · Authorized personnel only
         </p>
       </motion.div>

@@ -1,8 +1,9 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { NextRequest, NextResponse } from 'next/server';
+import { CHANNELS, DEFAULT_CHANNEL, LENS_KEYS, buildChannelAddendum, isChannelId } from '@/lib/channels';
 
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -321,7 +322,73 @@ const SCHEMA = {
   required: ['overall_score', 'grade', 'executive_summary', 'verdict', 'top_recommendations', 'creative_critique', 'audience_analysis', 'platform_analysis', 'risk_assessment', 'drivers', 'comparable_campaigns', 'industry_benchmarks'],
 };
 
+// script_storyboard variant: same report shape, but `drivers` holds the 3 meta-lenses
+// (Attention / Recognition / Motivation) instead of the 6 drivers.
+const LENS_SCHEMA = {
+  ...SCHEMA,
+  properties: {
+    ...SCHEMA.properties,
+    overall_score: { type: 'number', description: 'Average of the 3 lens scores (Attention, Recognition, Motivation), 0-10.' },
+    drivers: {
+      type: 'object',
+      description: 'The 3 meta-lenses for script/storyboard evaluation — NOT the 6 drivers.',
+      properties: Object.fromEntries(LENS_KEYS.map(k => [k, { ...DRIVER_SCHEMA }])),
+      required: [...LENS_KEYS],
+    },
+  },
+};
+
 const VIDEO_TYPES = ['video/mp4', 'video/quicktime', 'video/webm', 'video/x-msvideo', 'video/mpeg'];
+
+type PastCampaign = {
+  name: string;
+  channel: string | null;
+  outcome_metrics: Record<string, unknown>;
+  creative_traits: Record<string, unknown>;
+  created_at: string;
+};
+
+/**
+ * Phase D calibration: fetch this client's past campaigns (newest 5, same-channel
+ * preferred). Any failure — no table, no key, no rows — returns [] and the
+ * analysis proceeds exactly as without calibration. Never throws.
+ */
+async function fetchPastCampaigns(clientId: string, channelId: string): Promise<PastCampaign[]> {
+  try {
+    const { supabaseServer } = await import('@/lib/supabase-server');
+    const { data, error } = await supabaseServer
+      .from('past_campaigns')
+      .select('name, channel, outcome_metrics, creative_traits, created_at')
+      .eq('client_id', clientId)
+      .order('created_at', { ascending: false })
+      .limit(25);
+    if (error || !data) return [];
+    const rows = data as PastCampaign[];
+    const sameChannel = rows.filter(r => r.channel === channelId);
+    const rest = rows.filter(r => r.channel !== channelId);
+    return [...sameChannel, ...rest].slice(0, 5);
+  } catch {
+    return [];
+  }
+}
+
+function buildCalibrationBlock(campaigns: PastCampaign[]): string {
+  const entries = campaigns.map((c, i) => {
+    const metrics = Object.entries(c.outcome_metrics ?? {}).map(([k, v]) => `${k}: ${v}`).join(', ') || 'no metrics recorded';
+    const traits = Object.entries(c.creative_traits ?? {}).map(([k, v]) => `${k}: ${v}`).join(', ');
+    return `${i + 1}. "${c.name}"${c.channel ? ` [${c.channel}]` : ''} — outcomes: ${metrics}${traits ? ` — creative traits: ${traits}` : ''}`;
+  }).join('\n');
+
+  return `
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CALIBRATION CONTEXT — THIS CLIENT'S REAL PAST CAMPAIGNS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+The following are this client's actual past campaigns with their REAL recorded outcome metrics:
+${entries}
+
+Use these as client-specific comparables: identify which past campaigns this new creative most resembles, and calibrate expectations against the client's own track record ("this client's winners averaged X on Y", "this resembles their strong/weak cluster because…"). Reference them ONLY where genuinely relevant to a specific insight — do not force a calibration mention into every section. HONESTY RULE: use ONLY the metrics listed above, verbatim — never extrapolate, average beyond the data shown, or invent any metric for these campaigns. Where the data is too thin to support a comparison, say so.`;
+}
 
 async function analyzeVideoWithGemini(fileUri: string, mimeType: string, campaignContext: string): Promise<string> {
   const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY!);
@@ -362,6 +429,18 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { intake, clarification, fileBase64, fileMediaType, fileName, geminiFileUri, geminiMimeType, extractedMd } = body;
+
+    // Analysis app (channel). Absent → default (exact current behavior). Unknown → 400.
+    const channelId = body.channel ?? intake?.channel ?? DEFAULT_CHANNEL;
+    if (!isChannelId(channelId)) {
+      return NextResponse.json({ error: `Unknown channel "${channelId}". Valid: ${Object.keys(CHANNELS).join(', ')}` }, { status: 400 });
+    }
+    const channel = CHANNELS[channelId];
+    intake.channel = channelId; // persisted inside the intake jsonb the client saves
+
+    // Phase D calibration: this client's real past campaigns (silently skipped on any failure)
+    const clientId: string | null = body.clientId ?? intake?.clientId ?? intake?.client_id ?? null;
+    const pastCampaigns = clientId ? await fetchPastCampaigns(clientId, channelId) : [];
 
     const campaignContext = `
 Campaign: ${intake.campaignName}
@@ -438,25 +517,37 @@ Produce an EXHAUSTIVE, IN-DEPTH analysis. Every section must be detailed and spe
 
     messageContent.push({ type: 'text', text: textContent });
 
-    const response = await client.messages.create({
+    const response = await client.messages.stream({
       model: 'claude-sonnet-4-6',
-      max_tokens: 10000,
-      system: SYSTEM_PROMPT,
+      max_tokens: 32000,
+      system: SYSTEM_PROMPT + buildChannelAddendum(channel) + (pastCampaigns.length ? buildCalibrationBlock(pastCampaigns) : ''),
       messages: [{ role: 'user', content: messageContent }],
       tools: [{
         name: 'submit_analysis',
         description: 'Submit the complete exhaustive campaign analysis',
-        input_schema: SCHEMA,
+        input_schema: channel.schemaVariant === 'lenses' ? LENS_SCHEMA : SCHEMA,
       }],
       tool_choice: { type: 'tool', name: 'submit_analysis' },
-    });
+    }).finalMessage();
 
     const toolUse = response.content.find(b => b.type === 'tool_use');
     if (!toolUse || toolUse.type !== 'tool_use') {
       return NextResponse.json({ error: 'No analysis returned' }, { status: 500 });
     }
+    if (response.stop_reason === 'max_tokens' || !(toolUse.input as Record<string, unknown>).drivers) {
+      return NextResponse.json({ error: 'Analysis was cut off before completion (output token limit). Please retry.' }, { status: 500 });
+    }
 
-    return NextResponse.json({ analysis: toolUse.input });
+    // Stamp channel + variant into the report JSON (deterministic — not left to the model)
+    const analysis = {
+      ...(toolUse.input as Record<string, unknown>),
+      channel: channelId,
+      schema_variant: channel.schemaVariant,
+      calibration_context: pastCampaigns.length
+        ? { used: true, campaign_count: pastCampaigns.length, campaign_names: pastCampaigns.map(c => c.name) }
+        : { used: false },
+    };
+    return NextResponse.json({ analysis });
   } catch (err: unknown) {
     console.error('Analysis error:', err);
     const message = err instanceof Error ? err.message : 'Analysis failed';

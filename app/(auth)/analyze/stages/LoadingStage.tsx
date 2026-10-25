@@ -22,9 +22,11 @@ const WAIT_MESSAGES = [
 
 interface Props {
   onComplete: () => void;
+  /** Selected analysis app label, shown in the loading copy */
+  channelLabel?: string;
 }
 
-export default function LoadingStage({ onComplete }: Props) {
+export default function LoadingStage({ onComplete, channelLabel }: Props) {
   const [currentStep, setCurrentStep] = useState(0);
   const [progress, setProgress] = useState(0);
   const [waitIndex, setWaitIndex] = useState(0);
@@ -91,7 +93,7 @@ export default function LoadingStage({ onComplete }: Props) {
             ANALYZING
           </span>
           <p style={{ fontFamily: 'var(--font-poppins)', fontSize: 13, color: 'var(--text-muted)', margin: '8px 0 0', fontWeight: 400 }}>
-            Our AI is evaluating your campaign
+            {channelLabel ? `Running the ${channelLabel} analysis` : 'Our AI is evaluating your campaign'}
           </p>
         </div>
 
@@ -114,7 +116,7 @@ export default function LoadingStage({ onComplete }: Props) {
                   {completed && (
                     <motion.div
                       initial={{ scale: 0 }} animate={{ scale: 1 }}
-                      style={{ width: 28, height: 28, borderRadius: '50%', background: '#3EB489', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      style={{ width: 28, height: 28, borderRadius: '50%', background: '#3DDCC8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     >
                       <Check size={14} color="#fff" strokeWidth={3} />
                     </motion.div>
@@ -123,9 +125,9 @@ export default function LoadingStage({ onComplete }: Props) {
                     <motion.div
                       animate={{ scale: [1, 1.2, 1], opacity: [1, 0.7, 1] }}
                       transition={{ duration: 1.5, repeat: Infinity }}
-                      style={{ width: 28, height: 28, borderRadius: '50%', border: '2px solid #3EB489', boxShadow: '0 0 0 4px rgba(62,180,137,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      style={{ width: 28, height: 28, borderRadius: '50%', border: '2px solid #3DDCC8', boxShadow: '0 0 0 4px rgba(61,220,200,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     >
-                      <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#3EB489' }} />
+                      <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#3DDCC8' }} />
                     </motion.div>
                   )}
                   {pending && (
@@ -134,7 +136,7 @@ export default function LoadingStage({ onComplete }: Props) {
                   {waiting && completed && i === STEPS.length - 1 && (
                     <motion.div
                       initial={{ scale: 0 }} animate={{ scale: 1 }}
-                      style={{ position: 'absolute', inset: 0, width: 28, height: 28, borderRadius: '50%', background: '#3EB489', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      style={{ position: 'absolute', inset: 0, width: 28, height: 28, borderRadius: '50%', background: '#3DDCC8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     >
                       <Check size={14} color="#fff" strokeWidth={3} />
                     </motion.div>
@@ -144,7 +146,7 @@ export default function LoadingStage({ onComplete }: Props) {
                 <span style={{
                   fontFamily: 'var(--font-poppins)', fontSize: 14,
                   fontWeight: active ? 500 : 400,
-                  color: completed ? '#3EB489' : active ? 'var(--text-primary)' : 'var(--text-muted)',
+                  color: completed ? '#3DDCC8' : active ? 'var(--text-primary)' : 'var(--text-muted)',
                   transition: 'color 0.3s',
                 }}>
                   {step}
@@ -168,8 +170,8 @@ export default function LoadingStage({ onComplete }: Props) {
                 transition={{ duration: 1.4, repeat: Infinity, ease: 'linear' }}
                 style={{
                   flexShrink: 0, width: 28, height: 28, borderRadius: '50%',
-                  border: '2px solid rgba(62,180,137,0.2)',
-                  borderTop: '2px solid #3EB489',
+                  border: '2px solid rgba(61,220,200,0.2)',
+                  borderTop: '2px solid #3DDCC8',
                 }}
               />
               <span style={{ fontFamily: 'var(--font-poppins)', fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>
@@ -182,7 +184,7 @@ export default function LoadingStage({ onComplete }: Props) {
         {/* Progress bar */}
         <div style={{ height: 4, background: 'var(--border-subtle)', borderRadius: 2, overflow: 'hidden' }}>
           <motion.div
-            style={{ height: '100%', borderRadius: 2, background: 'linear-gradient(90deg, #3EB489, #6DC4A8)' }}
+            style={{ height: '100%', borderRadius: 2, background: 'linear-gradient(90deg, #3DDCC8, #7C8CFF)' }}
             animate={{ width: `${progress}%` }}
             transition={{ duration: 0.4, ease: 'easeOut' }}
           />

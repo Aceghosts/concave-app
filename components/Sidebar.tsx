@@ -4,16 +4,17 @@ import { useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  LayoutDashboard, FlaskConical, History,
-  Users, Shield, ChevronLeft, ChevronRight, Plus, Sun, Moon, LogOut,
+  LayoutDashboard, FlaskConical, History, GitCompare, SlidersHorizontal,
+  Users, Shield, ChevronLeft, ChevronRight, LogOut,
 } from 'lucide-react';
-import { useTheme } from '@/context/ThemeContext';
 import ClientDropdown from '@/components/ClientDropdown';
 
 const NAV = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'New Analysis', href: '/analyze', icon: FlaskConical },
   { label: 'History', href: '/history', icon: History },
+  { label: 'Compare', href: '/compare', icon: GitCompare },
+  { label: 'Calibration', href: '/calibration', icon: SlidersHorizontal },
 ];
 const SETTINGS = [
   { label: 'Clients', href: '/settings/clients', icon: Users },
@@ -23,7 +24,6 @@ const SETTINGS = [
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { theme, toggleTheme } = useTheme();
   const [collapsed, setCollapsed] = useState(false);
 
   const W = collapsed ? 72 : 256;
@@ -47,7 +47,7 @@ export default function Sidebar() {
           borderRadius: 12,
           border: 'none',
           cursor: 'pointer',
-          background: active ? 'rgba(62,180,137,0.15)' : 'transparent',
+          background: active ? 'rgba(61,220,200,0.15)' : 'transparent',
           color: active ? '#fff' : 'rgba(255,255,255,0.50)',
           fontFamily: 'var(--font-poppins)',
           fontSize: 14,
@@ -63,7 +63,7 @@ export default function Sidebar() {
               position: 'absolute', left: 0,
               top: '50%', transform: 'translateY(-50%)',
               width: 3, height: 22,
-              background: '#3EB489',
+              background: '#3DDCC8',
               borderRadius: 99,
             }}
           />
@@ -95,7 +95,7 @@ export default function Sidebar() {
         height: '100vh',
         position: 'sticky',
         top: 0,
-        background: 'linear-gradient(180deg, #0a0f1a 0%, #111827 55%, #1a1f2e 100%)',
+        background: 'linear-gradient(180deg, #0A0F1E 0%, #0B1226 100%)',
         borderRight: '1px solid rgba(255,255,255,0.06)',
         display: 'flex',
         flexDirection: 'column',
@@ -112,13 +112,20 @@ export default function Sidebar() {
         borderBottom: '1px solid rgba(255,255,255,0.05)',
         marginBottom: 16,
       }}>
-        <span className="shimmer-text font-bebas" style={{
-          fontSize: collapsed ? 22 : 26,
-          letterSpacing: collapsed ? 1 : 2,
-          lineHeight: 1,
-        }}>
-          {collapsed ? 'C' : 'CONCAVE'}
-        </span>
+        <span aria-hidden style={{
+          display: 'inline-block', flexShrink: 0,
+          width: 26, height: 26, borderRadius: 8,
+          background: 'var(--gradient-brand)',
+          boxShadow: '0 0 14px rgba(61,220,200,0.35)',
+        }} />
+        {!collapsed && (
+          <span className="font-bebas" style={{
+            fontSize: 20, fontWeight: 600, letterSpacing: '-0.02em',
+            lineHeight: 1, marginLeft: 10, color: 'var(--text-primary)',
+          }}>
+            Concave
+          </span>
+        )}
       </div>
 
       {/* Client selector */}
@@ -186,22 +193,6 @@ export default function Sidebar() {
 
         {/* Theme toggle + collapse */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: collapsed ? 'center' : 'space-between' }}>
-          <motion.button
-            whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.93 }}
-            onClick={toggleTheme}
-            title="Toggle theme"
-            style={{
-              width: 34, height: 34, borderRadius: '50%',
-              border: '1px solid rgba(255,255,255,0.10)',
-              background: 'rgba(255,255,255,0.06)',
-              color: 'rgba(255,255,255,0.55)',
-              cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-          >
-            {theme === 'light' ? <Moon size={15} /> : <Sun size={15} />}
-          </motion.button>
-
           {!collapsed && (
             <motion.button
               whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.93 }}

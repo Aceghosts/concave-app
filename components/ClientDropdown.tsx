@@ -34,8 +34,8 @@ export default function ClientDropdown() {
           alignItems: 'center',
           gap: 10,
           padding: '10px 12px',
-          background: noClients ? 'rgba(62,180,137,0.08)' : 'rgba(255,255,255,0.07)',
-          border: noClients ? '1px dashed rgba(62,180,137,0.35)' : '1px solid rgba(255,255,255,0.10)',
+          background: noClients ? 'rgba(61,220,200,0.08)' : 'rgba(255,255,255,0.07)',
+          border: noClients ? '1px dashed rgba(61,220,200,0.35)' : '1px solid rgba(255,255,255,0.10)',
           borderRadius: 12,
           cursor: 'pointer',
           outline: 'none',
@@ -43,17 +43,17 @@ export default function ClientDropdown() {
       >
         {noClients ? (
           <>
-            <div style={{ width: 28, height: 28, borderRadius: 8, flexShrink: 0, background: 'rgba(62,180,137,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Building2 size={13} color="#3EB489" />
+            <div style={{ width: 28, height: 28, borderRadius: 8, flexShrink: 0, background: 'rgba(61,220,200,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Building2 size={13} color="#3DDCC8" />
             </div>
             <p style={{ fontFamily: 'var(--font-poppins)', fontSize: 12, color: 'rgba(255,255,255,0.45)', margin: 0, flex: 1, textAlign: 'left' }}>
               No clients yet
             </p>
-            <Plus size={13} color="#3EB489" />
+            <Plus size={13} color="#3DDCC8" />
           </>
         ) : (
           <>
-            <div style={{ width: 28, height: 28, borderRadius: 8, flexShrink: 0, background: 'linear-gradient(135deg, #3EB489, #6DC4A8)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ width: 28, height: 28, borderRadius: 8, flexShrink: 0, background: 'linear-gradient(135deg, #3DDCC8, #7C8CFF)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <span style={{ fontFamily: 'var(--font-bebas)', fontSize: 13, color: '#fff', lineHeight: 1 }}>
                 {activeClient?.name[0] ?? clients[0].name[0]}
               </span>
@@ -86,7 +86,7 @@ export default function ClientDropdown() {
               top: 'calc(100% + 8px)',
               left: 0,
               right: 0,
-              background: '#141C2E',
+              background: '#0E1528',
               border: '1px solid rgba(255,255,255,0.10)',
               borderRadius: 14,
               overflow: 'hidden',
@@ -105,7 +105,7 @@ export default function ClientDropdown() {
                   onClick={() => { setOpen(false); router.push('/settings/clients'); }}
                   style={{
                     width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                    padding: '9px', background: 'linear-gradient(135deg, #3EB489, #6DC4A8)',
+                    padding: '9px', background: 'linear-gradient(135deg, #3DDCC8, #7C8CFF)',
                     border: 'none', borderRadius: 10, cursor: 'pointer',
                     fontFamily: 'var(--font-poppins)', fontSize: 12, fontWeight: 600, color: '#fff',
                   }}
@@ -129,12 +129,12 @@ export default function ClientDropdown() {
                         style={{
                           width: '100%', display: 'flex', alignItems: 'center', gap: 10,
                           padding: '10px', borderRadius: 10, border: 'none', cursor: 'pointer',
-                          background: isActive ? 'rgba(62,180,137,0.10)' : 'transparent', outline: 'none',
+                          background: isActive ? 'rgba(61,220,200,0.10)' : 'transparent', outline: 'none',
                         }}
                       >
                         <div style={{
                           width: 32, height: 32, borderRadius: 9, flexShrink: 0,
-                          background: isActive ? 'linear-gradient(135deg, #3EB489, #6DC4A8)' : 'rgba(255,255,255,0.08)',
+                          background: isActive ? 'linear-gradient(135deg, #3DDCC8, #7C8CFF)' : 'rgba(255,255,255,0.08)',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}>
                           <span style={{ fontFamily: 'var(--font-bebas)', fontSize: 14, color: isActive ? '#fff' : 'rgba(255,255,255,0.50)', lineHeight: 1 }}>
@@ -146,13 +146,13 @@ export default function ClientDropdown() {
                             {client.name}
                           </p>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 2 }}>
-                            <div style={{ width: 5, height: 5, borderRadius: '50%', background: client.metaConnected ? '#3EB489' : 'rgba(255,255,255,0.20)', flexShrink: 0 }} />
+                            <div style={{ width: 5, height: 5, borderRadius: '50%', background: client.metaConnected ? '#3DDCC8' : 'rgba(255,255,255,0.20)', flexShrink: 0 }} />
                             <p style={{ fontFamily: 'var(--font-poppins)', fontSize: 10, color: 'rgba(255,255,255,0.30)', margin: 0 }}>
                               {client.industry || 'No industry set'}
                             </p>
                           </div>
                         </div>
-                        {isActive && <Check size={13} color="#3EB489" />}
+                        {isActive && <Check size={13} color="#3DDCC8" />}
                       </motion.button>
                     );
                   })}
@@ -162,7 +162,7 @@ export default function ClientDropdown() {
                     onClick={() => { setOpen(false); router.push('/settings/clients'); }}
                     style={{
                       width: '100%', background: 'none', border: 'none', cursor: 'pointer',
-                      fontFamily: 'var(--font-poppins)', fontSize: 11, color: '#3EB489', fontWeight: 600,
+                      fontFamily: 'var(--font-poppins)', fontSize: 11, color: '#3DDCC8', fontWeight: 600,
                       letterSpacing: '0.5px', padding: '4px 0',
                     }}
                   >

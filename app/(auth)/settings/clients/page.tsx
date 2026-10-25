@@ -56,7 +56,7 @@ function IndustryDropdown({ value, onChange }: { value: string; onChange: (v: st
             transition={{ duration: 0.16, ease: [0.4, 0, 0.2, 1] }}
             style={{
               position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, zIndex: 200,
-              background: '#141C2E',
+              background: '#0E1528',
               border: '1px solid rgba(255,255,255,0.10)',
               borderRadius: 12,
               overflow: 'hidden',
@@ -78,15 +78,15 @@ function IndustryDropdown({ value, onChange }: { value: string; onChange: (v: st
                     style={{
                       width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                       padding: '10px 12px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                      background: active ? 'rgba(62,180,137,0.12)' : 'transparent',
+                      background: active ? 'rgba(61,220,200,0.12)' : 'transparent',
                       fontFamily: 'var(--font-poppins)', fontSize: 13,
-                      color: active ? '#3EB489' : 'rgba(255,255,255,0.70)',
+                      color: active ? '#3DDCC8' : 'rgba(255,255,255,0.70)',
                       fontWeight: active ? 600 : 400,
                       textAlign: 'left',
                     }}
                   >
                     {industry}
-                    {active && <Check size={13} color="#3EB489" />}
+                    {active && <Check size={13} color="#3DDCC8" />}
                   </motion.button>
                 );
               })}
@@ -173,8 +173,8 @@ export default function ClientsPage() {
           >
             <form onSubmit={handleAddClient} className="glass" style={{ padding: '28px 32px', overflow: 'visible' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 22 }}>
-                <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(62,180,137,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Building2 size={17} color="#3EB489" />
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(61,220,200,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Building2 size={17} color="#3DDCC8" />
                 </div>
                 <p style={{ fontFamily: 'var(--font-poppins)', fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>New Client</p>
                 <button type="button" onClick={() => setShowAddForm(false)}
@@ -239,13 +239,13 @@ export default function ClientsPage() {
       >
         {clientsLoading && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ textAlign: 'center', padding: '60px 0' }}>
-            <Loader2 size={24} color="#3EB489" style={{ margin: '0 auto', opacity: 0.5 }} className="spin" />
+            <Loader2 size={24} color="#3DDCC8" style={{ margin: '0 auto', opacity: 0.5 }} className="spin" />
           </motion.div>
         )}
 
         {!clientsLoading && clients.length === 0 && !showAddForm && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ textAlign: 'center', padding: '80px 0' }}>
-            <Building2 size={32} color="#3EB489" style={{ margin: '0 auto 14px', opacity: 0.4 }} />
+            <Building2 size={32} color="#3DDCC8" style={{ margin: '0 auto 14px', opacity: 0.4 }} />
             <p style={{ fontFamily: 'var(--font-poppins)', fontSize: 14, color: 'var(--text-muted)', marginBottom: 16 }}>No clients yet</p>
             <motion.button
               whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
@@ -267,8 +267,8 @@ export default function ClientsPage() {
               style={{ padding: '20px 24px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(62,180,137,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <span className="font-bebas" style={{ fontSize: 18, color: '#3EB489' }}>{client.name[0]}</span>
+                <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(61,220,200,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span className="font-bebas" style={{ fontSize: 18, color: '#3DDCC8' }}>{client.name[0]}</span>
                 </div>
                 <div>
                   <p style={{ fontFamily: 'var(--font-poppins)', fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>{client.name}</p>
@@ -279,9 +279,9 @@ export default function ClientsPage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <div
                     className={client.metaConnected ? 'pulse-dot' : ''}
-                    style={{ width: 8, height: 8, borderRadius: '50%', background: client.metaConnected ? '#3EB489' : 'rgba(255,255,255,0.20)' }}
+                    style={{ width: 8, height: 8, borderRadius: '50%', background: client.metaConnected ? '#3DDCC8' : 'rgba(255,255,255,0.20)' }}
                   />
-                  <span style={{ fontFamily: 'var(--font-poppins)', fontSize: 12, color: client.metaConnected ? '#3EB489' : 'var(--text-muted)', fontWeight: 500 }}>
+                  <span style={{ fontFamily: 'var(--font-poppins)', fontSize: 12, color: client.metaConnected ? '#3DDCC8' : 'var(--text-muted)', fontWeight: 500 }}>
                     Meta {client.metaConnected ? 'Connected' : 'Not Connected'}
                   </span>
                 </div>
@@ -362,8 +362,8 @@ export default function ClientsPage() {
                         <AnimatePresence>
                           {testResult === 'success' && (
                             <motion.div initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <Check size={15} color="#3EB489" />
-                              <span style={{ fontFamily: 'var(--font-poppins)', fontSize: 13, color: '#3EB489', fontWeight: 500 }}>Connected successfully</span>
+                              <Check size={15} color="#3DDCC8" />
+                              <span style={{ fontFamily: 'var(--font-poppins)', fontSize: 13, color: '#3DDCC8', fontWeight: 500 }}>Connected successfully</span>
                             </motion.div>
                           )}
                           {testResult === 'fail' && (
