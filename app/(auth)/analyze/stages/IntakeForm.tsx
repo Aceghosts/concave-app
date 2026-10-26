@@ -248,26 +248,21 @@ export default function IntakeForm({ onSubmit }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fileName: file.name, mimeType: file.type }),
       });
-      const { uploadId, storagePath, error: initError } = await initRes.json();
-      if (initError || !uploadId || !storagePath) throw new Error(initError || 'Upload init failed');
+      const { uploadId, storagePath, signedUrl, error: initError } = await initRes.json();
+      if (initError || !uploadId || !storagePath || !signedUrl) throw new Error(initError || 'Upload init failed');
 
-      // Step 2: upload file via server proxy (avoids CORS issues with direct Supabase upload)
+      // Step 2: PUT the file straight to Supabase Storage via the signed URL —
+      // no Vercel function in the byte path, so no 4.5MB cap (videos/decks upload fine)
       const uploadController = new AbortController();
-      const uploadTimeout = setTimeout(() => uploadController.abort(), 120000);
+      const uploadTimeout = setTimeout(() => uploadController.abort(), 300000);
       let uploadRes: Response;
       try {
-        uploadRes = await fetch(
-          `/api/upload?path=${encodeURIComponent(storagePath)}`,
-          {
-            method: 'PATCH',
-            headers: {
-              'Content-Type': file.type || 'application/octet-stream',
-              'x-mime-type': file.type || 'application/octet-stream',
-            },
-            body: file,
-            signal: uploadController.signal,
-          }
-        );
+        uploadRes = await fetch(signedUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': file.type || 'application/octet-stream' },
+          body: file,
+          signal: uploadController.signal,
+        });
       } finally {
         clearTimeout(uploadTimeout);
       }

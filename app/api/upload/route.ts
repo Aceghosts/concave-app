@@ -33,8 +33,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `DB insert failed: ${dbError?.message}` }, { status: 500 });
     }
 
-    // Return storagePath — browser will upload directly to Supabase using anon key
-    return NextResponse.json({ uploadId: uploadRow.id, storagePath });
+    // Signed upload URL: browser PUTs the file bytes straight to Supabase Storage,
+    // bypassing Vercel's 4.5MB function body limit entirely.
+    const { data: signed, error: signError } = await supabaseServer.storage
+      .from('campaign-files')
+      .createSignedUploadUrl(storagePath);
+    if (signError || !signed) {
+      return NextResponse.json({ error: `Could not create signed upload URL: ${signError?.message}` }, { status: 500 });
+    }
+
+    return NextResponse.json({ uploadId: uploadRow.id, storagePath, signedUrl: signed.signedUrl });
   } catch (err: unknown) {
     console.error('Upload init error:', err);
     return NextResponse.json({ error: err instanceof Error ? err.message : 'Upload failed' }, { status: 500 });
