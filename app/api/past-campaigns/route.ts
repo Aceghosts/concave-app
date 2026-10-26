@@ -43,13 +43,17 @@ type IncomingRow = {
 };
 
 // POST /api/past-campaigns → bulk insert
-// Body: { clientId?: string, rows: [{ name, channel?, outcome_metrics?, creative_traits? }] }
+// Body: { clientId?: string, analysisId?: string, rows: [{ name, channel?, outcome_metrics?, creative_traits? }] }
+// When analysisId is given, that analysis's report is turned into a scored trait
+// profile (lib/traits deriveTraitProfile) and stored as creative_traits.profile
+// on each inserted row. Existing CSV flow (no analysisId) is unchanged.
 export async function POST(req: NextRequest) {
   try {
     const { supabaseServer } = await import('@/lib/supabase-server');
     const body = await req.json();
     const rows: IncomingRow[] = Array.isArray(body) ? body : body?.rows;
     const clientId: string | null = Array.isArray(body) ? null : body?.clientId || null;
+    const analysisId: string | null = Array.isArray(body) ? null : body?.analysisId || null;
 
     if (!Array.isArray(rows) || rows.length === 0) {
       return NextResponse.json({ error: 'rows array required' }, { status: 400 });
@@ -57,6 +61,25 @@ export async function POST(req: NextRequest) {
     const invalid = rows.findIndex((r) => !r || typeof r.name !== 'string' || !r.name.trim());
     if (invalid !== -1) {
       return NextResponse.json({ error: `Row ${invalid + 1} is missing a name` }, { status: 400 });
+    }
+
+    // analysisId → derive a real trait profile from that stored analysis. Loud
+    // failure when it can't be derived — never insert a half-true profile.
+    let profile: import('@/lib/traits').TraitProfile | null = null;
+    if (analysisId) {
+      const { deriveTraitProfile } = await import('@/lib/traits');
+      const { data: analysisRow, error: aErr } = await supabaseServer
+        .from('analyses')
+        .select('report')
+        .eq('id', analysisId)
+        .single();
+      if (aErr || !analysisRow) {
+        return NextResponse.json({ error: `Analysis ${analysisId} not found` }, { status: 400 });
+      }
+      profile = deriveTraitProfile(analysisRow.report);
+      if (!profile) {
+        return NextResponse.json({ error: `Analysis ${analysisId} has no scored drivers — cannot derive a trait profile` }, { status: 400 });
+      }
     }
 
     const { data, error } = await supabaseServer
@@ -67,7 +90,7 @@ export async function POST(req: NextRequest) {
           name: r.name!.trim(),
           channel: r.channel?.toString().trim() || null,
           outcome_metrics: r.outcome_metrics ?? {},
-          creative_traits: r.creative_traits ?? {},
+          creative_traits: profile ? { ...(r.creative_traits ?? {}), profile } : (r.creative_traits ?? {}),
         }))
       )
       .select('id');

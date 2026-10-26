@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Upload, FileText, ChevronDown, Image, Video, CheckCircle, AlertCircle, Eye, EyeOff, Check } from 'lucide-react';
 import type { IntakeData } from '../page';
 import { CHANNELS, DEFAULT_CHANNEL, type ChannelId } from '@/lib/channels';
+import { computeAttentionMetrics } from '@/lib/attention';
 
 const GOALS = ['Brand Awareness', 'Lead Generation', 'Sales Conversion', 'App Downloads', 'Community Growth', 'Event Promotion'];
 const PLATFORMS = ['Meta', 'Instagram', 'TikTok', 'YouTube', 'Snapchat', 'LinkedIn', 'Twitter/X'];
@@ -189,15 +190,37 @@ export default function IntakeForm({ onSubmit }: Props) {
     competitorNotes: '', referenceLinks: [], externalResearch: true,
     ideaFile: null, ideaType: 'none', canvaLink: '',
     uploadId: null, extractedMd: null,
+    attention_metrics: null,
   });
   const [dragOver, setDragOver] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>('idle');
   const [uploadError, setUploadError] = useState('');
   const [processingMsg, setProcessingMsg] = useState(0);
   const [showMdPreview, setShowMdPreview] = useState(false);
+  const [attnStatus, setAttnStatus] = useState<'idle' | 'running' | 'done'>('idle');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const msgRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const attnToken = useRef(0);
+
+  /** Phase E1: predicted-attention pipeline for image creatives — never blocks the analysis. */
+  function startAttentionPipeline(file: File) {
+    const isImage = file.type.startsWith('image/') || /\.(jpe?g|png|webp|gif)$/i.test(file.name);
+    if (!isImage) { setAttnStatus('idle'); return; } // non-image: skip silently
+    const token = ++attnToken.current;
+    setAttnStatus('running');
+    computeAttentionMetrics(file)
+      .then(metrics => {
+        if (token !== attnToken.current) return; // stale (file was replaced)
+        setData(d => ({ ...d, attention_metrics: metrics }));
+        setAttnStatus('done');
+      })
+      .catch(err => {
+        if (token !== attnToken.current) return;
+        console.warn('Attention measurement skipped:', err); // skip silently — never block the analysis
+        setAttnStatus('idle');
+      });
+  }
 
   const startMessageCycle = useCallback(() => {
     let i = 0;
@@ -214,8 +237,9 @@ export default function IntakeForm({ onSubmit }: Props) {
   async function handleFileAccepted(file: File) {
     setUploadError('');
     setUploadStatus('uploading');
-    setData(d => ({ ...d, ideaFile: file, uploadId: null, extractedMd: null }));
+    setData(d => ({ ...d, ideaFile: file, uploadId: null, extractedMd: null, attention_metrics: null }));
     startMessageCycle();
+    startAttentionPipeline(file);
 
     try {
       // Step 1: create DB row on server, get storage path back (no file bytes through Vercel)
@@ -313,7 +337,9 @@ export default function IntakeForm({ onSubmit }: Props) {
   function removeFile() {
     if (pollRef.current) clearTimeout(pollRef.current);
     stopMessageCycle();
-    setData(d => ({ ...d, ideaFile: null, uploadId: null, extractedMd: null }));
+    attnToken.current++;
+    setAttnStatus('idle');
+    setData(d => ({ ...d, ideaFile: null, uploadId: null, extractedMd: null, attention_metrics: null }));
     setUploadStatus('idle');
     setUploadError('');
     setShowMdPreview(false);
@@ -327,14 +353,39 @@ export default function IntakeForm({ onSubmit }: Props) {
     }));
   }
 
+  const isFlagship = (data.channel ?? DEFAULT_CHANNEL) === 'campaign_brief';
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!data.goal) return;
-    // Allow submit even if file is still processing — analysis will use whatever is ready
-    onSubmit(data);
+    if (isFlagship) {
+      if (!data.goal) return;
+      // Allow submit even if file is still processing — analysis will use whatever is ready
+      onSubmit(data);
+      return;
+    }
+    // Non-flagship apps are upload-only: the file is the brief. Fill the required
+    // context fields with honest defaults so the API contract is unchanged.
+    if (!data.ideaFile) return;
+    const label = CHANNELS[data.channel].label;
+    onSubmit({
+      ...data,
+      campaignName: data.campaignName || data.ideaFile.name.replace(/\.[^.]+$/, '') || `Untitled ${label} analysis`,
+      brief: data.brief || `Score this ${label} asset against channel best practices.`,
+      goal: data.goal || GOALS[0],
+      audience: data.audience || 'General audience (infer from the asset)',
+    });
   }
 
   const isProcessing = uploadStatus === 'uploading' || uploadStatus === 'processing';
+
+  // Instant local preview: object URL renders the moment a file is picked, before any upload finishes
+  const previewUrl = useMemo(() => {
+    const f = data.ideaFile;
+    if (!f || !(f.type.startsWith('image/') || f.type.startsWith('video/'))) return null;
+    return URL.createObjectURL(f);
+  }, [data.ideaFile]);
+  useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl); }, [previewUrl]);
+  const submitBlocked = !isFlagship && !data.ideaFile;
 
   return (
     <div style={{ maxWidth: 1200, margin: '0 auto' }}>
@@ -447,8 +498,10 @@ export default function IntakeForm({ onSubmit }: Props) {
           >
             <SectionHeader
               n="2"
-              title="Upload creative or brief"
-              sub="Concave extracts the content and auto-fills the context form — review, adjust, and analyze."
+              title={isFlagship ? 'Upload creative or brief' : 'Upload the asset'}
+              sub={isFlagship
+                ? 'Concave extracts the content and auto-fills the context form — review, adjust, and analyze.'
+                : "Upload the asset — that's all we need. Scoring runs against channel best practices."}
             />
             <p style={{ ...helpStyle, margin: '0 0 16px' }}>
               Any file type — <strong style={{ color: 'var(--text-primary)' }}>PDF, PPTX, DOCX, MP4, MOV, JPG, PNG, MD, TXT</strong>
@@ -494,6 +547,19 @@ export default function IntakeForm({ onSubmit }: Props) {
             {/* File selected — show status */}
             {data.ideaFile && (
               <div style={{ border: '1px solid var(--glass-border)', borderRadius: 14, overflow: 'hidden' }}>
+                {/* Instant preview — object URL, zero wait */}
+                {previewUrl && (
+                  <div style={{ background: '#05070F', display: 'flex', justifyContent: 'center', maxHeight: 280, overflow: 'hidden' }}>
+                    {data.ideaFile.type.startsWith('video/') ? (
+                      <video src={previewUrl} muted playsInline preload="metadata" controls
+                        style={{ maxHeight: 280, maxWidth: '100%', objectFit: 'contain' }} />
+                    ) : (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={previewUrl} alt="Uploaded creative preview"
+                        style={{ maxHeight: 280, maxWidth: '100%', objectFit: 'contain' }} />
+                    )}
+                  </div>
+                )}
                 {/* File row */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 18px', background: 'rgba(61,220,200,0.08)' }}>
                   {fileIcon(data.ideaFile.type, data.ideaFile.name)}
@@ -580,6 +646,30 @@ export default function IntakeForm({ onSubmit }: Props) {
                     </div>
                   )}
 
+                  {attnStatus !== 'idle' && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: uploadStatus === 'failed' ? 0 : 10 }}>
+                      {attnStatus === 'running' ? (
+                        <>
+                          <motion.div
+                            animate={{ rotate: 360 }}
+                            transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }}
+                            style={{ width: 13, height: 13, borderRadius: '50%', border: '2px solid rgba(124,140,255,0.25)', borderTop: '2px solid #7C8CFF', flexShrink: 0 }}
+                          />
+                          <span style={{ fontFamily: 'var(--font-poppins)', fontSize: 12.5, color: 'var(--text-secondary)' }}>
+                            Measuring predicted attention…
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle size={13} color="#7C8CFF" />
+                          <span style={{ fontFamily: 'var(--font-poppins)', fontSize: 12.5, color: 'var(--text-secondary)' }}>
+                            Predicted attention measured — {data.attention_metrics ? `${Math.round(data.attention_metrics.text_attention_share * 100)}% of attention on text, ${data.attention_metrics.regions.length} region${data.attention_metrics.regions.length === 1 ? '' : 's'}` : 'heatmap ready'}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  )}
+
                   {uploadStatus === 'failed' && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <AlertCircle size={16} color="#F87171" />
@@ -596,8 +686,8 @@ export default function IntakeForm({ onSubmit }: Props) {
             )}
           </motion.section>
 
-          {/* ── 3 · Campaign context (grouped Brainsuite-style) ── */}
-          <motion.section
+          {/* ── 3 · Campaign context (flagship only — other apps are upload-only) ── */}
+          {isFlagship && <motion.section
             initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.15 }}
             style={{ ...sectionCard, display: 'flex', flexDirection: 'column', gap: 26 }}
           >
@@ -705,7 +795,7 @@ export default function IntakeForm({ onSubmit }: Props) {
                 </div>
               </div>
             </details>
-          </motion.section>
+          </motion.section>}
         </div>
 
         {/* Submit */}
@@ -714,11 +804,12 @@ export default function IntakeForm({ onSubmit }: Props) {
         >
           <motion.button
             type="submit"
-            whileHover={{ scale: 1.01, y: -1 }} whileTap={{ scale: 0.99 }}
+            disabled={submitBlocked}
+            whileHover={submitBlocked ? undefined : { scale: 1.01, y: -1 }} whileTap={submitBlocked ? undefined : { scale: 0.99 }}
             className="btn-primary"
-            style={{ width: '100%', padding: '16px', fontSize: 16, borderRadius: 14 }}
+            style={{ width: '100%', padding: '16px', fontSize: 16, borderRadius: 14, opacity: submitBlocked ? 0.5 : 1, cursor: submitBlocked ? 'not-allowed' : 'pointer' }}
           >
-            {isProcessing ? 'Processing file... you can still continue →' : 'Analyze Campaign →'}
+            {submitBlocked ? 'Upload an asset to analyze' : isProcessing ? 'Processing file... you can still continue →' : 'Analyze Campaign →'}
           </motion.button>
         </motion.div>
       </form>

@@ -30,6 +30,13 @@ export default function DriverSection({ driverKey, driver }: { driverKey: string
         </div>
       )}
 
+      {/* Depth lives behind one toggle — scores and verdicts stay scannable by default */}
+      <details>
+        <summary style={{ cursor: 'pointer', listStyle: 'none', fontFamily: 'var(--font-poppins)', fontSize: 11.5, fontWeight: 600, color: 'var(--accent)', letterSpacing: '0.4px', padding: '4px 0', userSelect: 'none' }}>
+          Full analysis &amp; fixes ↓
+        </summary>
+        <div style={{ marginTop: 12 }}>
+
       {(driver.deep_analysis || driver.justification) && (
         <p style={{ fontFamily: 'var(--font-poppins)', fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.7, margin: '0 0 16px' }}>
           {driver.deep_analysis || driver.justification}
@@ -88,6 +95,8 @@ export default function DriverSection({ driverKey, driver }: { driverKey: string
           )}
         </div>
       )}
+        </div>
+      </details>
     </section>
   );
 }

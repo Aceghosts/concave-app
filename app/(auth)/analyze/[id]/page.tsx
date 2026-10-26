@@ -7,6 +7,9 @@ import { Download, ChevronDown, ChevronUp, Loader2, AlertTriangle } from 'lucide
 import ScoreRing from '@/components/report/ScoreRing';
 import DriverBars from '@/components/report/DriverBars';
 import DriverSection from '@/components/report/DriverSection';
+import AttentionHeatmap from '@/components/report/AttentionHeatmap';
+import SimilarCampaigns from '@/components/report/SimilarCampaigns';
+import type { AttentionMetrics } from '@/lib/attention-types';
 import OptimizeTab from '@/components/report/OptimizeTab';
 import ProveTab from '@/components/report/ProveTab';
 import { generatePPTX } from '@/components/report/pptx';
@@ -16,6 +19,7 @@ interface Meta {
   clientId?: string | null;
   createdAt?: string;
   platforms?: string[];
+  attentionMetrics?: AttentionMetrics | null;
 }
 
 type TabKey = 'predict' | 'optimize' | 'prove';
@@ -53,6 +57,7 @@ export default function ReportPage() {
           clientId: row.client_id,
           createdAt: row.created_at,
           platforms: Array.isArray(row.intake?.platforms) ? row.intake.platforms : undefined,
+          attentionMetrics: row.intake?.attention_metrics?.heatmap_data_url ? row.intake.attention_metrics : null,
         });
         setReport({ id: row.id, campaignName: row.campaign_name, ...row.report });
       })
@@ -236,8 +241,22 @@ export default function ReportPage() {
               </div>
 
               {DRIVER_KEYS.map(key => report.drivers[key] && (
-                <DriverSection key={key} driverKey={key} driver={report.drivers[key]} />
+                <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <DriverSection driverKey={key} driver={report.drivers[key]} />
+                  {key === 'attention' && meta.attentionMetrics && (
+                    <AttentionHeatmap metrics={meta.attentionMetrics} />
+                  )}
+                </div>
               ))}
+
+              <SimilarCampaigns items={(report as any).similar_past_campaigns} />
+
+              {/* Deeper prose lives behind one toggle — keeps the report scannable */}
+              <details className="glass" style={{ padding: '18px 28px' }}>
+                <summary style={{ cursor: 'pointer', listStyle: 'none', fontFamily: 'var(--font-poppins)', fontSize: 13, fontWeight: 600, color: 'var(--accent)', userSelect: 'none' }}>
+                  Deeper analysis — critique, audience &amp; platforms ↓
+                </summary>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 20, marginTop: 18 }}>
 
               {/* Creative critique */}
               {report.creative_critique && (
@@ -301,6 +320,9 @@ export default function ReportPage() {
                   )}
                 </div>
               )}
+
+                </div>
+              </details>
 
               {/* Comparable campaigns (collapsed) */}
               {(report.comparable_campaigns?.length ?? 0) > 0 && (

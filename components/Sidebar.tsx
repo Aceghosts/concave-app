@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, FlaskConical, History, GitCompare, SlidersHorizontal,
-  Users, Shield, ChevronLeft, ChevronRight, LogOut,
+  Users, Shield, Megaphone, ChevronLeft, ChevronRight, LogOut,
 } from 'lucide-react';
 import ClientDropdown from '@/components/ClientDropdown';
 
@@ -18,6 +18,7 @@ const NAV = [
 ];
 const SETTINGS = [
   { label: 'Clients', href: '/settings/clients', icon: Users },
+  { label: 'Meta Ads', href: '/settings/meta', icon: Megaphone },
   { label: 'Admin', href: '/settings/admin', icon: Shield },
 ];
 

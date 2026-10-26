@@ -1,6 +1,7 @@
 import { inngest } from '@/lib/inngest';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { GoogleAIFileManager, FileState } from '@google/generative-ai/server';
+import { MAX_FRAMES, pdfToFramePngs, officeToPdf, videoToKeyframes, type FrameResult } from './frames';
 
 const VIDEO_TYPES = ['video/mp4', 'video/quicktime', 'video/webm', 'video/x-msvideo', 'video/mpeg'];
 const IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
@@ -99,6 +100,50 @@ Be exhaustive. This is the foundation for a campaign analysis.`
   }
 }
 
+/**
+ * Phase E2: render the upload to PNG frames so Claude can SEE the design.
+ * PDF → first pages; PPTX/DOCX → PDF (soffice) → pages; video → keyframes (ffmpeg).
+ * Uploads PNGs to campaign-files at <uploadId>/frames/NN.png.
+ * Never throws — any failure returns null and analysis stays text-only.
+ */
+async function renderFrames(buffer: Buffer, uploadId: string, fileName: string, mimeType: string): Promise<FrameResult | null> {
+  try {
+    let pngs: Buffer[] = [];
+    let kind: FrameResult['kind'] = 'pages';
+
+    if (mimeType === 'application/pdf') {
+      pngs = await pdfToFramePngs(buffer);
+    } else if (mimeType.includes('presentation') || mimeType.includes('word') || /\.(pptx?|docx?)$/i.test(fileName)) {
+      const pdf = await officeToPdf(buffer, fileName);
+      if (pdf) pngs = await pdfToFramePngs(pdf);
+    } else if (VIDEO_TYPES.includes(mimeType)) {
+      kind = 'keyframes';
+      pngs = await videoToKeyframes(buffer, fileName);
+    }
+
+    pngs = pngs.slice(0, MAX_FRAMES);
+    if (!pngs.length) return null;
+
+    const sb = await getSupabase();
+    const paths: string[] = [];
+    for (let i = 0; i < pngs.length; i++) {
+      const path = `${uploadId}/frames/${String(i + 1).padStart(2, '0')}.png`;
+      const { error } = await sb.storage
+        .from('campaign-files')
+        .upload(path, pngs[i], { contentType: 'image/png', upsert: true });
+      if (error) {
+        console.warn('[frames] upload failed for', path, error.message);
+        continue;
+      }
+      paths.push(path);
+    }
+    return paths.length ? { paths, kind, count: paths.length } : null;
+  } catch (e) {
+    console.warn('[frames] rendering failed for', fileName, e);
+    return null;
+  }
+}
+
 function buildMarkdown(fileName: string, mimeType: string, extractedContent: string): string {
   const fileType = VIDEO_TYPES.includes(mimeType) ? 'Video Ad Creative'
     : IMAGE_TYPES.includes(mimeType) ? 'Image Creative'
@@ -162,6 +207,13 @@ export const processFileFn = inngest.createFunction(
       throw new Error(`Unsupported file type: ${mimeType}`);
     });
 
+    // Phase E2: render deck pages / video keyframes as PNGs so Claude can SEE the design.
+    // Best-effort: returns null on any failure (no soffice, no ffmpeg, bad file) and the
+    // text-only pipeline continues unchanged.
+    const frames = await step.run('render-frames', async () =>
+      renderFrames(buffer, uploadId, fileName, mimeType),
+    );
+
     // Structure into clean MD
     const markdown = buildMarkdown(fileName, mimeType, rawContent);
 
@@ -169,8 +221,16 @@ export const processFileFn = inngest.createFunction(
     await step.run('save-markdown', async () => {
       const sb = await getSupabase();
       await sb.from('uploads').update({ status: 'ready', extracted_md: markdown }).eq('id', uploadId);
+      if (frames) {
+        // Separate best-effort update: if the frame columns don't exist yet
+        // (supabase/frames.sql not run), the ready/extracted_md update above still lands.
+        const { error } = await sb.from('uploads')
+          .update({ frame_paths: frames.paths, frame_count: frames.count, frame_kind: frames.kind })
+          .eq('id', uploadId);
+        if (error) console.warn('[frames] could not persist frame paths (run supabase/frames.sql?):', error.message);
+      }
     });
 
-    return { uploadId, mdLength: markdown.length };
+    return { uploadId, mdLength: markdown.length, frameCount: frames?.count ?? 0 };
   },
 );

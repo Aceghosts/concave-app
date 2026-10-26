@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { NextRequest, NextResponse } from 'next/server';
 import { CHANNELS, DEFAULT_CHANNEL, LENS_KEYS, buildChannelAddendum, isChannelId } from '@/lib/channels';
+import { deriveTraitProfile, isTraitProfile, summarizeTraits, traitSimilarity, type SimilarPastCampaign } from '@/lib/traits';
 
 export const maxDuration = 300;
 
@@ -150,7 +151,8 @@ RULES:
 4. If a file/image is provided, comment on specific visible elements (copy, color, hierarchy, composition, production quality)
 5. Be honest about weaknesses — agencies hire Concave to hear the truth, not feel good
 6. Flag uncertainty: use "likely," "unclear from brief," or "would need to see the full creative to confirm" where appropriate
-7. Go deep on the cultural dynamics of the brief's stated market when relevant — this is a critical dimension most global tools miss`;
+7. WRITE FOR A BUSY CREATIVE DIRECTOR: short, plain, concrete sentences. No jargon, no filler, no repeating the brief back. Every sentence must earn its place — if a point is made once, never restate it. Respect every length cap in the schema as a HARD maximum.
+8. Go deep on the cultural dynamics of the brief's stated market when relevant — this is a critical dimension most global tools miss`;
 
 const SUB_KPI_SCHEMA = {
   type: 'array',
@@ -161,7 +163,7 @@ const SUB_KPI_SCHEMA = {
       name: { type: 'string', description: 'Exact sub-KPI name from the system prompt list for this driver' },
       score: { type: 'number', description: '0-100 integer. Calibrated: 70+ green (strong), 40-69 amber (needs work), <40 red (critical)' },
       status: { type: 'string', enum: ['green', 'amber', 'red'] },
-      verdict: { type: 'string', description: 'One plain-English sentence stating the finding, e.g. "The brand logo gets a low share of attention — under 2% of the frame, bottom-left corner."' },
+      verdict: { type: 'string', description: 'One short plain-English sentence (max 15 words) stating the finding, e.g. "The brand logo gets a low share of attention — under 2% of the frame, bottom-left corner."' },
       evidence: { type: 'string', description: 'The specific observable detail from the creative/brief that justifies this score' },
     },
     required: ['name', 'score', 'status', 'verdict', 'evidence'],
@@ -174,14 +176,14 @@ const DRIVER_SCHEMA = {
     score: { type: 'number', description: 'Score 0-10, one decimal. Be calibrated and honest.' },
     sub_kpis: SUB_KPI_SCHEMA,
     summary: { type: 'string', description: 'One sharp sentence — the single most important truth about this driver for this campaign.' },
-    deep_analysis: { type: 'string', description: 'Dense 2-3 sentence analysis. Reference specific details from the brief/files and explain the WHY — no filler.' },
+    deep_analysis: { type: 'string', description: 'ONE or two tight sentences: the key insight and why, referencing something concrete. Plain language, no jargon.' },
     what_works: {
       type: 'array', items: { type: 'string' },
-      description: '2-3 specific strengths. Each one sentence referencing something concrete from this campaign.',
+      description: '2 strengths max, each under 12 words, concrete.',
     },
     what_doesnt: {
       type: 'array', items: { type: 'string' },
-      description: '2-3 specific weaknesses. Be direct. Each one sentence, concrete.',
+      description: '2 weaknesses max, each under 12 words, direct and concrete.',
     },
     recommendations: {
       type: 'array', items: {
@@ -333,7 +335,11 @@ async function fetchPastCampaigns(clientId: string, channelId: string): Promise<
 function buildCalibrationBlock(campaigns: PastCampaign[]): string {
   const entries = campaigns.map((c, i) => {
     const metrics = Object.entries(c.outcome_metrics ?? {}).map(([k, v]) => `${k}: ${v}`).join(', ') || 'no metrics recorded';
-    const traits = Object.entries(c.creative_traits ?? {}).map(([k, v]) => `${k}: ${v}`).join(', ');
+    // Scored trait profile (derived from a real past analysis) beats raw key/value traits when present
+    const profile = c.creative_traits?.profile;
+    const traits = isTraitProfile(profile)
+      ? `scored trait profile — ${summarizeTraits(profile)}; driver scores: ${Object.entries(profile.drivers).map(([k, v]) => `${k} ${v}/100`).join(', ')}`
+      : Object.entries(c.creative_traits ?? {}).map(([k, v]) => `${k}: ${v}`).join(', ');
     return `${i + 1}. "${c.name}"${c.channel ? ` [${c.channel}]` : ''} — outcomes: ${metrics}${traits ? ` — creative traits: ${traits}` : ''}`;
   }).join('\n');
 
@@ -346,6 +352,93 @@ The following are this client's actual past campaigns with their REAL recorded o
 ${entries}
 
 Use these as client-specific comparables: identify which past campaigns this new creative most resembles, and calibrate expectations against the client's own track record ("this client's winners averaged X on Y", "this resembles their strong/weak cluster because…"). Reference them ONLY where genuinely relevant to a specific insight — do not force a calibration mention into every section. HONESTY RULE: use ONLY the metrics listed above, verbatim — never extrapolate, average beyond the data shown, or invent any metric for these campaigns. Where the data is too thin to support a comparison, say so.`;
+}
+
+/**
+ * Phase E2: fetch rendered deck pages / video keyframes (PNGs the Inngest worker
+ * stored at <uploadId>/frames/NN.png) and build labeled image content blocks so
+ * Claude critiques the DESIGN, not just extracted text.
+ * Never throws — any failure returns [] and the analysis proceeds text-only.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function fetchFrameBlocks(uploadId: string): Promise<any[]> {
+  try {
+    const { supabaseServer } = await import('@/lib/supabase-server');
+    const { data } = await supabaseServer
+      .from('uploads')
+      .select('frame_paths, frame_kind')
+      .eq('id', uploadId)
+      .single();
+    const paths: string[] = Array.isArray(data?.frame_paths) ? data.frame_paths.slice(0, 8) : [];
+    if (!paths.length) return [];
+    const isVideo = data?.frame_kind === 'keyframes';
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const blocks: any[] = [];
+    for (let i = 0; i < paths.length; i++) {
+      const { data: file, error } = await supabaseServer.storage.from('campaign-files').download(paths[i]);
+      if (error || !file) continue;
+      const buf = Buffer.from(await file.arrayBuffer());
+      if (buf.length > 4.5 * 1024 * 1024) continue; // stay under Anthropic's per-image limit
+      const label = isVideo
+        ? `Keyframe ${i + 1} of ${paths.length} (at ~${Math.round(((i + 0.5) / paths.length) * 100)}% through the video):`
+        : `Slide ${i + 1} of ${paths.length}:`;
+      blocks.push({ type: 'text', text: label });
+      blocks.push({ type: 'image', source: { type: 'base64', media_type: 'image/png', data: buf.toString('base64') } });
+    }
+    if (blocks.length) {
+      blocks.unshift({
+        type: 'text',
+        text: isVideo
+          ? 'VIDEO KEYFRAMES — evenly-spaced frames rendered from the actual uploaded video. Critique the real visual execution you see here (composition, branding, text legibility, production quality), not just the described content.'
+          : 'RENDERED PAGES — the actual pages/slides of the uploaded file as images. Critique the real visual design you see here (layout, hierarchy, typography, color, branding), not just the extracted text.',
+      });
+    }
+    return blocks;
+  } catch (e) {
+    console.warn('[analyze] frame fetch failed — proceeding text-only:', e);
+    return [];
+  }
+}
+
+/**
+ * Phase E: measured attention metrics (MSI-Net saliency + OCR) computed client-side
+ * and passed inside the intake. Typed loosely — the AttentionMetrics contract lives
+ * in lib/attention-types.ts (another deliverable). Never fabricated: block is only
+ * appended when real metrics are present.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function buildAttentionBlock(am: any): string {
+  try {
+    const regions = Array.isArray(am?.regions)
+      ? am.regions.map((r: { label?: string; share?: number }) =>
+          `• ${r?.label ?? 'unknown region'} — ${typeof r?.share === 'number' ? (r.share * 100).toFixed(1) : '?'}% of predicted attention`,
+        ).join('\n')
+      : '(no regions detected)';
+    const textShare = typeof am?.text_attention_share === 'number'
+      ? `${(am.text_attention_share * 100).toFixed(1)}%` : 'n/a';
+
+    return `
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MEASURED ATTENTION DATA (model-predicted, MSI-Net — SALICON-benchmark saliency model)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+These are MEASURED predictions from a saliency model run on the actual creative — not estimates.
+
+Attention regions (share of total predicted attention):
+${regions}
+
+Total predicted attention on text: ${textShare}
+Where attention concentrates: ${am?.top_focus ?? 'n/a'}
+
+RULES FOR USING THIS DATA:
+1. For the Attention and Branding sub-KPIs (Visual Hierarchy, Key Message Attention, Focal Competition, Brand Attention, Product Attention, CTA Attention), score from these MEASURED values instead of estimating from the image.
+2. In the evidence string for any sub-KPI scored from this data, cite the number and label it "predicted attention" (e.g. "logo captures 3.2% predicted attention — bottom-left region").
+3. Where this data contradicts your visual impression, the measured data wins for attention-share claims.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+  } catch {
+    return '';
+  }
 }
 
 async function analyzeVideoWithGemini(fileUri: string, mimeType: string, campaignContext: string): Promise<string> {
@@ -419,6 +512,13 @@ Brief: ${intake.brief}
       }
     }
 
+    // Phase E2: rendered deck pages / video keyframes (the client's intake carries uploadId)
+    const uploadId: string | null = body.uploadId ?? intake?.uploadId ?? null;
+    const frameBlocks = uploadId ? await fetchFrameBlocks(uploadId) : [];
+
+    // Phase E: measured attention metrics, only when actually present in the intake
+    const attentionBlock = intake?.attention_metrics ? buildAttentionBlock(intake.attention_metrics) : '';
+
     const textContent = `
 CAMPAIGN TO ANALYZE:
 
@@ -448,6 +548,7 @@ ${videoAnalysis}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Use the above video analysis as your primary creative reference. Every driver score and insight must reference specific moments, visuals, audio elements, and scenes described above.` : ''}
+${attentionBlock}
 
 CLARIFICATION Q&A:
 ${clarification.questions.map((q: string, i: number) => `Q: ${q}\nA: ${clarification.answers[i] || '(no answer)'}`).join('\n\n')}
@@ -457,7 +558,7 @@ Produce an EXHAUSTIVE, IN-DEPTH analysis. Every section must be detailed and spe
 
     // Build message content — include PDF/image file if provided (not video — those go via Gemini)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const messageContent: any[] = [];
+    const messageContent: any[] = [...frameBlocks];
 
     if (fileBase64 && fileMediaType && !VIDEO_TYPES.includes(fileMediaType)) {
       if (fileMediaType === 'application/pdf') {
@@ -497,7 +598,7 @@ Produce an EXHAUSTIVE, IN-DEPTH analysis. Every section must be detailed and spe
     }
 
     // Stamp channel + variant into the report JSON (deterministic — not left to the model)
-    const analysis = {
+    const analysis: Record<string, unknown> = {
       ...(toolUse.input as Record<string, unknown>),
       channel: channelId,
       schema_variant: channel.schemaVariant,
@@ -505,6 +606,38 @@ Produce an EXHAUSTIVE, IN-DEPTH analysis. Every section must be detailed and spe
         ? { used: true, campaign_count: pastCampaigns.length, campaign_names: pastCampaigns.map(c => c.name) }
         : { used: false },
     };
+
+    // Post-analysis similarity (server-side, deterministic — never left to the model):
+    // compare this fresh report's trait profile against stored past-campaign profiles.
+    // Stamped only when real profiles exist and are comparable; absent otherwise.
+    // Never throws — a failure here must not lose a finished analysis.
+    try {
+      const freshProfile = deriveTraitProfile(analysis);
+      if (freshProfile && pastCampaigns.length) {
+        const matches: SimilarPastCampaign[] = [];
+        for (const c of pastCampaigns) {
+          const profile = c.creative_traits?.profile;
+          if (!isTraitProfile(profile)) continue;
+          const similarity = traitSimilarity(freshProfile, profile);
+          if (similarity === null) continue;
+          matches.push({
+            name: c.name,
+            channel: c.channel,
+            similarity,
+            outcome_metrics: c.outcome_metrics ?? {},
+            traits_summary: summarizeTraits(profile),
+          });
+        }
+        if (matches.length) {
+          analysis.similar_past_campaigns = matches
+            .sort((a, b) => b.similarity - a.similarity)
+            .slice(0, 3);
+        }
+      }
+    } catch (e) {
+      console.warn('[analyze] similarity stamping failed — report returned without it:', e);
+    }
+
     return NextResponse.json({ analysis });
   } catch (err: unknown) {
     console.error('Analysis error:', err);

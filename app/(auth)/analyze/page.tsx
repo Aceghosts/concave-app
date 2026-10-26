@@ -7,6 +7,7 @@ import IntakeForm from './stages/IntakeForm';
 import ClarificationStage from './stages/ClarificationStage';
 import LoadingStage from './stages/LoadingStage';
 import { CHANNELS, DEFAULT_CHANNEL, type ChannelId } from '@/lib/channels';
+import type { AttentionMetrics } from '@/lib/attention-types';
 
 export type IntakeData = {
   /** Analysis app (channel) — first intake step */
@@ -28,6 +29,8 @@ export type IntakeData = {
   // Set after background processing completes
   uploadId: string | null;
   extractedMd: string | null;
+  /** Measured layer (Phase E1) — computed client-side for image creatives, null otherwise */
+  attention_metrics: AttentionMetrics | null;
 };
 
 export type ClarificationData = {
