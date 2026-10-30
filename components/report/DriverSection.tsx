@@ -1,10 +1,10 @@
 'use client';
 
-import { ArrowRight } from 'lucide-react';
-import { band, BAND_COLOR, DRIVER_LABELS, to100, type Driver, type Recommendation } from './types';
+import { ArrowRight, ChevronDown, FileText } from 'lucide-react';
+import { band, BAND_COLOR, driverLabel, to100, type Driver, type Recommendation } from './types';
 import KpiRow from './KpiRow';
 
-/** Predict-tab driver section: driver score, summary verdict paragraph, sub-KPI rows, then depth. */
+/** Focused driver detail panel (one open at a time): score, verdict, sub-KPI rows, then depth behind a toggle. */
 export default function DriverSection({ driverKey, driver }: { driverKey: string; driver: Driver }) {
   const s = to100(driver.score);
   const color = BAND_COLOR[band(s)];
@@ -13,7 +13,7 @@ export default function DriverSection({ driverKey, driver }: { driverKey: string
     <section id={`driver-${driverKey}`} className="glass" style={{ padding: '24px 26px', borderLeft: `3px solid ${color}`, scrollMarginTop: 96 }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, marginBottom: 6 }}>
         <h2 style={{ fontFamily: 'var(--font-poppins)', fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
-          {DRIVER_LABELS[driverKey] ?? driverKey}
+          {driverLabel(driverKey)}
         </h2>
         <span className="font-bebas" style={{ fontSize: 30, color, lineHeight: 1, fontFeatureSettings: '"tnum"' }}>
           {s}<span style={{ fontSize: 14, color: 'var(--text-muted)', marginLeft: 2 }}>/100</span>
@@ -32,8 +32,10 @@ export default function DriverSection({ driverKey, driver }: { driverKey: string
 
       {/* Depth lives behind one toggle — scores and verdicts stay scannable by default */}
       <details>
-        <summary style={{ cursor: 'pointer', listStyle: 'none', fontFamily: 'var(--font-poppins)', fontSize: 11.5, fontWeight: 600, color: 'var(--accent)', letterSpacing: '0.4px', padding: '4px 0', userSelect: 'none' }}>
-          Full analysis &amp; fixes ↓
+        <summary style={{ cursor: 'pointer', listStyle: 'none', display: 'inline-flex', alignItems: 'center', gap: 7, fontFamily: 'var(--font-poppins)', fontSize: 12, fontWeight: 600, color: 'var(--accent)', letterSpacing: '0.3px', padding: '7px 14px', borderRadius: 99, background: 'var(--accent-dim)', border: '1px solid rgba(61,220,200,0.2)', userSelect: 'none' }}>
+          <FileText size={13} />
+          Full analysis &amp; fixes
+          <ChevronDown size={13} />
         </summary>
         <div style={{ marginTop: 12 }}>
 
@@ -78,6 +80,11 @@ export default function DriverSection({ driverKey, driver }: { driverKey: string
                   <div>
                     <p style={{ fontFamily: 'var(--font-poppins)', fontSize: 12, color: 'var(--text-primary)', margin: 0, lineHeight: 1.5 }}>
                       {rec ? rec.action : (r as string)}
+                      {rec?.effort && (
+                        <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', padding: '2px 7px', borderRadius: 99, background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-subtle)', color: 'var(--text-muted)', marginLeft: 8, verticalAlign: 'middle' }}>
+                          {rec.effort} effort
+                        </span>
+                      )}
                     </p>
                     {rec?.rationale && (
                       <p style={{ fontFamily: 'var(--font-poppins)', fontSize: 11, color: 'var(--text-muted)', margin: '2px 0 0', lineHeight: 1.45 }}>{rec.rationale}</p>

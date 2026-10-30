@@ -1,6 +1,6 @@
 'use client';
 
-import { band, BAND_COLOR, BAND_LABEL, DRIVER_KEYS, DRIVER_LABELS, statusColor, to100, type Report } from './types';
+import { band, BAND_COLOR, BAND_LABEL, driverLabel, orderedDriverKeys, statusColor, to100, type Report } from './types';
 
 export const METHODOLOGY_NOTE =
   'Concave is expert AI critique: a large language model applying a structured effectiveness framework. ' +
@@ -27,7 +27,7 @@ export default function ProveTab({ report }: { report: Report }) {
       </div>
 
       {/* 2. Per-driver evidence digest (PPTX slides 3–9) */}
-      {DRIVER_KEYS.map(key => {
+      {orderedDriverKeys(report.drivers).map(key => {
         const d = report.drivers[key];
         if (!d) return null;
         const s = to100(d.score);
@@ -36,7 +36,7 @@ export default function ProveTab({ report }: { report: Report }) {
           <div key={key} className="glass" style={{ padding: '20px 24px' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 8 }}>
               <span style={{ fontFamily: 'var(--font-poppins)', fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.7px' }}>
-                {DRIVER_LABELS[key]}
+                {driverLabel(key)}
               </span>
               <span className="font-bebas" style={{ fontSize: 24, color, lineHeight: 1, fontFeatureSettings: '"tnum"' }}>{s}</span>
             </div>

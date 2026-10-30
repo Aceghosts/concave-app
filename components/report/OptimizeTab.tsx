@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { CheckCircle2 } from 'lucide-react';
-import { BAND_LABEL, DRIVER_KEYS, DRIVER_LABELS, DRIVER_WEIGHTS, statusColor, type Report, type Recommendation } from './types';
+import { BAND_LABEL, DRIVER_WEIGHTS, driverLabel, orderedDriverKeys, statusColor, type Report, type Recommendation } from './types';
 
 interface RankedKpi {
   driverKey: string;
@@ -19,9 +19,11 @@ interface RankedKpi {
 export default function OptimizeTab({ report }: { report: Report }) {
   const [addressed, setAddressed] = useState<Set<string>>(new Set());
 
+  const keys = useMemo(() => orderedDriverKeys(report.drivers), [report]);
+
   const ranked = useMemo<RankedKpi[]>(() => {
     const out: RankedKpi[] = [];
-    for (const key of DRIVER_KEYS) {
+    for (const key of keys) {
       const d = report.drivers[key];
       if (!d?.sub_kpis) continue;
       for (const k of d.sub_kpis) {
@@ -39,11 +41,11 @@ export default function OptimizeTab({ report }: { report: Report }) {
       }
     }
     return out.sort((a, b) => b.rank - a.rank);
-  }, [report]);
+  }, [report, keys]);
 
   const fixDrivers = useMemo(
-    () => DRIVER_KEYS.filter(key => ranked.some(r => r.driverKey === key) && (report.drivers[key]?.recommendations?.length ?? 0) > 0),
-    [ranked, report],
+    () => keys.filter(key => ranked.some(r => r.driverKey === key) && (report.drivers[key]?.recommendations?.length ?? 0) > 0),
+    [ranked, report, keys],
   );
 
   function toggle(id: string) {
@@ -90,18 +92,20 @@ export default function OptimizeTab({ report }: { report: Report }) {
           Weak sub-KPIs, ranked by severity × driver weight
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {ranked.map(k => {
+          {ranked.map((k, idx) => {
             const id = `${k.driverKey}:${k.name}`;
             const done = addressed.has(id);
             const color = statusColor(k.status);
             return (
-              <div key={id} className="glass" style={{ padding: '14px 18px', borderLeft: `3px solid ${color}`, opacity: done ? 0.55 : 1, transition: 'opacity 0.2s' }}>
+              <div key={id} className="glass" style={{ padding: '14px 18px', borderLeft: `3px solid ${color}`, opacity: done ? 0.55 : 1, transition: 'opacity 0.2s', display: 'flex', gap: 14 }}>
+                <span className="font-bebas" style={{ fontSize: 24, color: 'var(--text-muted)', lineHeight: 1.1, flexShrink: 0, minWidth: 22, textAlign: 'right' }}>{idx + 1}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
                   <span style={{ fontFamily: 'var(--font-poppins)', fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', textDecoration: done ? 'line-through' : 'none' }}>
                     {k.name}
                   </span>
                   <span style={{ fontFamily: 'var(--font-poppins)', fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-subtle)', padding: '2px 8px', borderRadius: 99 }}>
-                    {DRIVER_LABELS[k.driverKey]}
+                    {driverLabel(k.driverKey)}
                   </span>
                   <span style={{ fontFamily: 'var(--font-poppins)', fontSize: 10, fontWeight: 700, color, background: `${color}1f`, padding: '2px 9px', borderRadius: 99 }}>
                     {BAND_LABEL[k.status]} · {k.score}/100
@@ -116,6 +120,7 @@ export default function OptimizeTab({ report }: { report: Report }) {
                 {k.evidence && (
                   <p style={{ fontFamily: 'var(--font-poppins)', fontSize: 11, color: 'var(--text-muted)', margin: '6px 0 0', lineHeight: 1.5, fontStyle: 'italic' }}>{k.evidence}</p>
                 )}
+                </div>
               </div>
             );
           })}
@@ -131,7 +136,7 @@ export default function OptimizeTab({ report }: { report: Report }) {
             {fixDrivers.map(key => (
               <div key={key} className="glass" style={{ padding: '16px 20px' }}>
                 <p style={{ fontFamily: 'var(--font-poppins)', fontSize: 11, fontWeight: 700, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.7px', marginBottom: 10 }}>
-                  {DRIVER_LABELS[key]}
+                  {driverLabel(key)}
                 </p>
                 {report.drivers[key].recommendations.map((r, i) => {
                   const rec = typeof r === 'string' ? null : (r as Recommendation);
@@ -146,6 +151,11 @@ export default function OptimizeTab({ report }: { report: Report }) {
                       <span style={{ fontFamily: 'var(--font-poppins)', fontSize: 12, color: 'var(--text-primary)', lineHeight: 1.5 }}>
                         {rec ? rec.action : (r as string)}
                       </span>
+                      {rec?.effort && (
+                        <span style={{ fontFamily: 'var(--font-poppins)', fontSize: 9, fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', padding: '2px 7px', borderRadius: 99, background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-subtle)', color: 'var(--text-muted)', marginLeft: 8, verticalAlign: 'middle' }}>
+                          {rec.effort} effort
+                        </span>
+                      )}
                       {rec?.rationale && (
                         <p style={{ fontFamily: 'var(--font-poppins)', fontSize: 11, color: 'var(--text-muted)', margin: '3px 0 0', lineHeight: 1.45 }}>{rec.rationale}</p>
                       )}

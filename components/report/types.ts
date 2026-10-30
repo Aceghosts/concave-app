@@ -73,7 +73,31 @@ export const DRIVER_LABELS: Record<string, string> = {
   strategic_fit: 'Strategic Fit',
   emotional_engagement: 'Emotional Engagement',
   persuasion: 'Persuasion',
+  // script_storyboard channel scores 3 meta-lenses in the same `drivers` map
+  recognition: 'Recognition',
+  motivation: 'Motivation',
 };
+
+/** Label for any driver/lens key, falling back to Title Case for unknown keys. */
+export function driverLabel(key: string) {
+  return DRIVER_LABELS[key] ?? key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+/** Keys actually present in this report's drivers map: the standard six in canonical
+ *  order first, then any extras (e.g. the 3-lens variant's recognition/motivation). */
+export function orderedDriverKeys(drivers?: Record<string, Driver>): string[] {
+  if (!drivers) return [];
+  const std = DRIVER_KEYS.filter(k => drivers[k]);
+  const extras = Object.keys(drivers).filter(k => drivers[k] && !(DRIVER_KEYS as readonly string[]).includes(k));
+  return [...std, ...extras];
+}
+
+/** First sentence of a blob of prose — tile one-liners for old long-text reports. */
+export function firstSentence(text?: string): string {
+  if (!text) return '';
+  const m = text.match(/^.*?[.!?](?=\s|$)/);
+  return (m ? m[0] : text).trim();
+}
 
 // Engine's own weighting (see overall_score description in the analyze SCHEMA)
 export const DRIVER_WEIGHTS: Record<string, number> = {
