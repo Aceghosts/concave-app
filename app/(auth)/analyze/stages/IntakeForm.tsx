@@ -392,7 +392,7 @@ export default function IntakeForm({ onSubmit }: Props) {
           NEW ANALYSIS
         </h1>
         <p style={{ fontFamily: 'var(--font-poppins)', fontSize: 15, color: 'var(--text-secondary)', margin: '8px 0 0' }}>
-          Tell us about your campaign and we&apos;ll score it against 6 creative-effectiveness drivers.
+          Upload. Score. Fix.
         </p>
       </motion.div>
 
@@ -406,7 +406,7 @@ export default function IntakeForm({ onSubmit }: Props) {
           <SectionHeader
             n="1"
             title="Pick your analysis app"
-            sub="Each app tunes the sub-KPIs to its medium — pick the one that matches what you're scoring."
+            sub=""
           />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
             {Object.values(CHANNELS).map((ch) => {
@@ -494,13 +494,8 @@ export default function IntakeForm({ onSubmit }: Props) {
             <SectionHeader
               n="2"
               title={isFlagship ? 'Upload creative or brief' : 'Upload the asset'}
-              sub={isFlagship
-                ? 'Concave extracts the content and auto-fills the context form — review, adjust, and analyze.'
-                : "Upload the asset — that's all we need. Scoring runs against channel best practices."}
+              sub=""
             />
-            <p style={{ ...helpStyle, margin: '0 0 16px' }}>
-              Any file type — <strong style={{ color: 'var(--text-primary)' }}>PDF, PPTX, DOCX, MP4, MOV, JPG, PNG, MD, TXT</strong>
-            </p>
 
             {/* No file yet — tall drop zone */}
             {uploadStatus === 'idle' && !data.ideaFile && (
@@ -531,7 +526,7 @@ export default function IntakeForm({ onSubmit }: Props) {
                   Drag &amp; drop your file here
                 </p>
                 <p style={{ fontFamily: 'var(--font-poppins)', fontSize: 13.5, color: 'var(--text-secondary)', margin: '8px 0 0' }}>
-                  or click to browse — any size
+                  PDF · PPTX · DOCX · MP4 · JPG · PNG
                 </p>
                 <input ref={fileInputRef} type="file" accept={ACCEPTED_EXTENSIONS}
                   onChange={e => { const f = e.target.files?.[0]; if (f) handleFileAccepted(f); }}
@@ -689,7 +684,7 @@ export default function IntakeForm({ onSubmit }: Props) {
             <SectionHeader
               n="3"
               title="Campaign context"
-              sub="Brand, intended message and placement — the context every score is judged against."
+              sub=""
             />
 
             {/* Brand & campaign */}

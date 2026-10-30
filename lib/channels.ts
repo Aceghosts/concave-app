@@ -44,7 +44,7 @@ export const CHANNELS: Record<ChannelId, Channel> = {
   campaign_brief: {
     id: 'campaign_brief',
     label: 'Campaign & Brief',
-    description: 'Flagship: whole campaign evaluated against the strategy brief — 6 drivers, full sub-KPI set.',
+    description: 'Whole campaign, scored against the brief.',
     assetKinds: ['image', 'video', 'pdf', 'text'],
     schemaVariant: 'drivers',
     promptAddendum: '',
@@ -54,7 +54,7 @@ export const CHANNELS: Record<ChannelId, Channel> = {
   social: {
     id: 'social',
     label: 'Social',
-    description: 'Per-asset social creative: hook, scroll-stop power, platform mandatories, sound-off comprehension.',
+    description: 'Hook, scroll-stop power, platform fit.',
     assetKinds: ['image', 'video'],
     schemaVariant: 'drivers',
     promptAddendum: `ANALYSIS APP: SOCIAL
@@ -128,7 +128,7 @@ For every platform the intake names, check its specific mandatories explicitly (
   digital: {
     id: 'digital',
     label: 'Digital / Display',
-    description: 'Banners and display units: legibility at size, logo visibility, message hierarchy, CTA prominence, format fit.',
+    description: 'Banners: legibility, CTA, format fit.',
     assetKinds: ['image', 'pdf'],
     schemaVariant: 'drivers',
     promptAddendum: `ANALYSIS APP: DIGITAL / DISPLAY
@@ -201,7 +201,7 @@ Core truths of the medium: banner blindness is the default — the unit must def
   video: {
     id: 'video',
     label: 'Video / TVC',
-    description: 'Long-form film and TVC: scene-by-scene attention risks, branding moments, narrative clarity, cutdown readiness.',
+    description: 'Film & TVC, scene by scene.',
     assetKinds: ['video', 'pdf', 'text'],
     schemaVariant: 'drivers',
     promptAddendum: `ANALYSIS APP: VIDEO / TVC
@@ -274,7 +274,7 @@ Core truths of the medium: attention decays non-linearly and every cut, lull or 
   script_storyboard: {
     id: 'script_storyboard',
     label: 'Script & Storyboard',
-    description: 'Pre-production evaluation of scripts, storyboards and concepts on 3 meta-lenses: Attention, Recognition, Motivation. Evaluates — never rewrites.',
+    description: 'Scripts & concepts, before production.',
     assetKinds: ['pdf', 'text', 'image'],
     schemaVariant: 'lenses',
     promptAddendum: `ANALYSIS APP: SCRIPT & STORYBOARD (pre-production)
