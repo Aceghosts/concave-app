@@ -24,7 +24,9 @@ let sessionPromise: Promise<{ ort: any; session: any }> | null = null;
 function getSession() {
   if (!sessionPromise) {
     sessionPromise = (async () => {
-      const ort = await import('onnxruntime-web');
+      // wasm-only bundle: requests the plain ort-wasm-simd-threaded.{mjs,wasm} we self-host
+      // (the default bundle asks for the 28MB .jsep build we don't ship — that 404 was why heatmaps never appeared)
+      const ort = await import('onnxruntime-web/wasm');
       ort.env.wasm.wasmPaths = ORT_WASM_DIR;
       ort.env.wasm.numThreads = 1; // multithreading needs cross-origin isolation headers we don't set
       const session = await ort.InferenceSession.create(MODEL_URL, { executionProviders: ['wasm'] });
